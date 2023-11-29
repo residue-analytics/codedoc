@@ -1,0 +1,7 @@
+cryptography
+uvicorn[standard]
+fastapi
+langchain
+langserve
+gradio_client
+pydantic

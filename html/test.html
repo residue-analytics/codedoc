@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="">
+
+  <title>Doc Gen</title>
+
+  <!-- Page Router -->
+  <script src="https://unpkg.com/navigo@8.11.1/lib/navigo.js"></script>  
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" 
+    integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+  <!-- Bootstrap icon font -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+
+  <!-- Ace Code Editor CSS https://ace.c9.io/ -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/css/ace.min.css">
+
+  <!-- Vanilla Tree Viewer CSS https://github.com/abhchand/vanilla-tree-viewer -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/main.min.css">
+  <link rel="stylesheet" href="css/styles.css" />
+  
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+  <header class="navbar navbar-expand-md navbar-dark bg-primary">
+    <nav class="container-xxl flex-wrap flex-md-nowrap" aria-label="Primary Navigation">
+      <a class="navbar-brand" href="#home">Home</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse"  data-bs-target="#navbarSupportedContent" 
+        aria-controls="navbarSupportedContent"  aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarSupportedContent">
+        <ul class="navbar-nav flex-row flex-wrap pt-2 py-md-0">
+          <li class="nav-item dropdown col-6 col-md-auto">
+			      <a class="nav-link dropdown-toggle" href="#" id="utilitiesDropdown" role="button" 
+              data-bs-toggle="dropdown" aria-expanded="false">
+              Utilities
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="utilitiesDropdown">
+              <li><a class="dropdown-item" href="#utils/range">Chat UI</a></li>
+            </ul>
+          </li>
+          <li class="nav-item col-6 col-md-auto">
+            <a class="nav-link disabled" aria-current="page" href="#learn">Learn</a>
+          </li>
+          <li class="nav-item dropdown col-6 col-md-auto">
+            <a class="nav-link dropdown-toggle" href="#" id="practiceDropdown" role="button" 
+              data-bs-toggle="dropdown" aria-expanded="false">
+              Practice
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="practiceDropdown">
+              <li><a class="dropdown-item" href="#practice/simulator">Simulator</a></li>
+              <li><a class="dropdown-item" href="#practice/arena">Playground</a></li>
+            </ul>
+          </li>
+          <li class="nav-item col-6 col-md-auto">
+            <a class="nav-link disabled" aria-current="page" href="#arena">Settings</a>
+          </li>
+          <li class="nav-item col-6 col-md-auto">
+            <a class="nav-link" aria-current="page" href="#faqs">FAQs</a>
+          </li>
+        </ul>
+      </div>
+    </nav>
+    <div id="erroralert" class="position-fixed top-0 end-0 m-3" style="z-index:1070"></div>
+  </header>
+
+  <div class="progress mb-3" style="height: 4px;" id="globalProgress" is="progress-bar">
+    <div class="progress-bar bg-warning" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+  </div>
+
+  <div id="content">
+    <div id="main" class="container">
+      <div class="row justify-content-left align-items-center mb-3" style="height: 400px">
+        <div id="editor1" class="col-6">
+          <ol class='vtv' data-language="javascript">
+            <!-- File 1 -->
+            <!-- File contents will be fetched from the `data-url` -->
+            <li
+              data-path="lib/axios.js"
+              data-url="https://raw.githubusercontent.com/axios/axios/master/lib/axios.js">
+            </li>
+          
+            <!-- File 2 -->
+            <!-- Alternately, you can directly specify the file contents inline `<li>...</li>` -->
+            <!-- You can also override syntax highlighting with `data-language` for this file -->
+            <li data-path="values.json" data-language="json">{ "foo": "bar" }</li>
+          
+            <!-- File 3 -->
+            <li data-path="src/index.js">
+              <!-- File contents (optional) -->
+            </li>
+            <li data-path="src/main.js">
+              Help
+            </li>
+          </ol>
+        </div>
+
+        <div class="col-6" style="height:100%;">
+          <div id="editor2" class="rounded" style="height:100%;">
+function foo(items) {
+  var x = "All this is syntax highlighted";
+  return x;
+}
+          </div>
+        </div>
+      </div>
+    
+      <div class="row align-items-top mb-3">
+        <div class="btn-toolbar justify-content-between mb-3" role="toolbar" aria-label="Toolbar with button groups">
+          <div class="btn-group me-2" role="group" aria-label="First group">
+            <button id="ModelSelectorBtn" type="button" class="btn btn-outline-secondary active" data-bs-toggle="button">
+              LLM <span class="badge text-bg-primary">None</span>
+            </button>
+            <button id="SysPromptBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+              SP
+            </button>
+            <button id="UsrPromptBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">UP</button>
+            <button id="TemperatureBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+              Temp <span class="badge text-bg-primary">0.1</span>
+            </button>
+            <button id="ToppBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+              Top P <span class="badge text-bg-primary">0.5</span>
+            </button>
+            <button id="MaxTokensBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">Max Toks</button>
+            <button id="RepeatPenaltyBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+              Rep Pen <span class="badge text-bg-primary">0.5</span>
+            </button>
+            <button id="TopkBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+              Top K <span class="badge text-bg-primary">10</span>
+            </button>
+          </div>
+          <button type="button" class="btn btn-primary">Send Prompt to LLM</button>
+        </div>
+      </div>
+
+      <div class="row align-items-top mb-3">
+        <div class="col-6">
+          <form>
+            <div class="mb-3">
+              <label for="ModelSelector" class="form-label">Chat with LLM</label>
+              <select id="ModelSelector" class="form-select" aria-label="Select the LLM">
+                <option value="None" selected>None</option>
+                <option value="CLP">Code Llama Playground (CLP)</option>
+                <option value="L27B">Llama2 7B (L27B)</option>
+                <option value="O3.5">OpenAI GPT 3.5 (O3.5)</option>
+              </select>
+              <div class="form-text">
+                The Large Language Model to use for the task or question.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="SysPromptInput" class="form-label">System Prompt</label>
+              <textarea id="SysPromptInput" class="form-control" rows="6" placeholder="System Prompt"></textarea>
+              <div class="form-text">
+                The system prompt helps set the behavior of the LLM/assistant. If properly crafted, the system message 
+                can be used to set the tone and the kind of response by the model.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="UsrPromptInput" class="form-label">User Prompt</label>
+              <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
+              <div class="form-text">
+                The user prompt poses the current task or question for the LLM.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="TemperatureInput" class="form-label">Temperature</label>
+              <input id="TemperatureInput" type="range" class="form-range" min="0" max="1" step="0.01" value="0.1">
+              <div class="form-text">
+                Temperature influences the shape of the probability distribution that the model calculates for 
+                the next token rather than limiting the token selection.
+                A higher temperature (~1) results in more randomness and diversity in the generated text, as the 
+                model is more likely to explore a wider range of possible tokens. For Code Generation tasks, lower
+                temperature is the recommended approach. <br>
+                <a href="https://ivibudh.medium.com/a-guide-to-controlling-llm-model-output-exploring-top-k-top-p-and-temperature-parameters-ed6a31313910" target="_blank">Details</a>
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="ToppInput" class="form-label">Top-p</label>
+              <input id="ToppInput" type="range" class="form-range" min="0" max="1" step="0.01" value="0.5">
+              <div class="form-text">
+                Top-p, also known as nucleus sampling, controls the cumulative probability of the generated tokens. 
+                The model generates tokens until the cumulative probability exceeds the chosen threshold (p). 
+                This approach allows for more dynamic control over the length of the generated text and encourages 
+                diversity in the output by including less probable tokens when necessary.
+                A larger value makes the LLM generate more random output.
+                Do not change this value together with temperature.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="MaxTokensInput" class="form-label">Max Tokens</label>
+              <div class="col-3">
+                <input id="MaxTokensInput" type="number" class="form-control" min="10" step="1" value="1024">
+              </div>
+              <div class="form-text">
+                Maximum length of the input tokens and generated tokens.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="RepeatPenaltyInput" class="form-label">Repeat Penalty</label>
+              <input id="RepeatPenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="0.5">
+              <div class="form-text">
+                A larger value decreases the likelihood of repetition of the same token/word/line.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="TopkInput" class="form-label">Top-k</label>
+              <div class="col-3">
+                <input id="TopkInput" type="number" class="form-control" min="1" max="100" step="1" value="10">
+              </div>
+              <div class="form-text">
+                Top-k limits the model's predictions to the top k most probable tokens at each step of generation.
+                By setting a value for k, you are instructing the model to consider only the k most likely tokens.
+                Top-k is useful for avoiding nonsensical responses. For example, if you set Top-k to 10, the LLM 
+                will only consider the 10 most probable next words. 
+                This will result in more fluent text, but it will also reduce the diversity of the text.
+                Top-k is similar to Top-p but with a fixed number. Top-p limits us to the top tokens within a 
+                certain probability mass (p).
+                Top-k provides a controlled randomness by considering a fixed number of top probable tokens, 
+                while top-p allows for dynamic control of the number of tokens considered, leading to different levels 
+                of diversity in the generated text.
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="col-6">
+          <form>
+            <label for="ModelOutput" class="form-label">LLM Response</label>
+            <textarea id="ModelOutput" class="form-control" rows="12"></textarea>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <footer>
+    <div class="social text-center pb-3">
+      <a href="#" title="Connect with us on Instagram"><i class="bi bi-instagram"></i></a>
+      <a href="#" title="Connect with us on Twitter"><i class="bi bi-twitter-x"></i></a>
+      <a href="#" title="connect with us on Facebook"><i class="bi bi-facebook"></i></a>
+    </div>
+    <ul class="list-inline text-center">
+      <li class="list-inline-item"><a href="#home">Home</a></li>
+      <li class="list-inline-item"><a href="#about">About</a></li>
+      <li class="list-inline-item"><a href="#terms">Terms</a></li>
+      <li class="list-inline-item"><a href="#disclaimer">Disclaimer</a></li>
+      <li class="list-inline-item"><a href="#privacy">Privacy Policy</a></li>
+    </ul>
+    <p class="copyright">Shalin Garg © 2023</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
+    integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+  
+  <!-- Ace Code Editor Script -->
+  <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/ace.min.js"></script>
+  
+  <!-- Vanilla Tree Viewer -->
+  <script type="text/javascript" onload="VanillaTreeViewer.renderAll()" 
+    src="https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js"></script>
+  
+  <script src="js/index.js"></script>
+
+</body>
+</html>
