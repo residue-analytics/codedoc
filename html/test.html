@@ -79,27 +79,6 @@
     <div id="main" class="container">
       <div class="row justify-content-left align-items-center mb-3" style="height: 400px">
         <div id="editor1" class="col-6">
-          <ol class='vtv' data-language="javascript">
-            <!-- File 1 -->
-            <!-- File contents will be fetched from the `data-url` -->
-            <li
-              data-path="lib/axios.js"
-              data-url="https://raw.githubusercontent.com/axios/axios/master/lib/axios.js">
-            </li>
-          
-            <!-- File 2 -->
-            <!-- Alternately, you can directly specify the file contents inline `<li>...</li>` -->
-            <!-- You can also override syntax highlighting with `data-language` for this file -->
-            <li data-path="values.json" data-language="json">{ "foo": "bar" }</li>
-          
-            <!-- File 3 -->
-            <li data-path="src/index.js">
-              <!-- File contents (optional) -->
-            </li>
-            <li data-path="src/main.js">
-              Help
-            </li>
-          </ol>
         </div>
 
         <div class="col-6" style="height:100%;">
@@ -136,7 +115,14 @@ function foo(items) {
               Top K <span class="badge text-bg-primary">10</span>
             </button>
           </div>
-          <button type="button" class="btn btn-primary">Send Prompt to LLM</button>
+          <div>
+            <button id="SendToLLM" type="button" class="btn btn-primary" 
+              title="Send the prompts and params without any code">Send</i></button>
+            <button id="SendFileToLLM" type="button" class="btn btn-primary" 
+              title="Send File to LLM along with the prompts and params">Send <i class="bi bi-file-code"></i></button>
+            <button id="SendSelectionToLLM" type="button" class="btn btn-primary"
+              title="Send Selected Text to LLM along with the prompts and params">Send <i class="bi bi-text-paragraph"></i></button>
+          </div>
         </div>
       </div>
 
@@ -262,12 +248,12 @@ function foo(items) {
   
   <!-- Ace Code Editor Script -->
   <script src="https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/ace.min.js"></script>
-  
+
   <!-- Vanilla Tree Viewer -->
   <script type="text/javascript" onload="VanillaTreeViewer.renderAll()" 
     src="https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js"></script>
   
-  <script src="js/index.js"></script>
+  <script type="module" src="js/index.js"></script>
 
 </body>
 </html>

@@ -3,6 +3,7 @@ from typing import List
 
 from fastapi             import FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses   import FileResponse
 from langchain.globals   import set_verbose
 from langchain.globals   import set_debug
 from langchain.prompts   import PromptTemplate
@@ -127,10 +128,10 @@ class LLMParams(BaseModel):
     user_prompt: str
 
 class File(BaseModel):
-    name: str           # program_name.js
-    loc: str            # Directory location
-    prevVer: int = 0    # 1, 2, 3 ...
-    content: str        # file content
+    name: str           # loc/loc/program_name.ver.js ver=1, 2, 3
+    version: int | None = None
+    content: str | None = None # file content
+
 
 @app.post("/llm/")
 async def call_llm(params: LLMParams) -> dict:
@@ -185,48 +186,125 @@ def get_models() -> dict:
     return MODELS_FOR_UI
 
 @app.get("/files/{dir_path:path}")
-def get_file(dir_path: str, request: Request) -> dict:
+def get_file(dir_path: str, raw: bool = False, editable: bool = False, request: Request = None):
     if dir_path.find("..") != -1:
         raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
+    
+    basedir  = None
+    findVersionedFile = False
+    if editable:
+        basedir = OUTPUT_CODE_DIR
+        findVersionedFile = True
+    else:
+        basedir = INPUT_CODE_DIR
 
-    filepath = Path(INPUT_CODE_DIR + "/" + dir_path)
+    filepath = Path(basedir + "/" + dir_path)
+
     if filepath.is_file():
-        return {'file': dir_path, 'data': filepath.read_text()}
+        if raw:
+            return FileResponse(str(filepath))    # FastAPI to return proper content headers
+        else:
+            return File(name=dir_path, content=filepath.read_text())
     elif filepath.is_dir():
         files_paths = []
         for file in filepath.glob("**/*"):
             if not (file.name.startswith('_') or file.name.startswith('.')):
-                #files_paths.append(request.url._url.rstrip("/") + "/" + file.name)
-                files_paths.append(file.relative_to(INPUT_CODE_DIR).as_posix())
+                if not file.is_dir():
+                    files_paths.append(file.relative_to(basedir).as_posix())
         # files = os.listdir("./" + dir_path)
         #files_paths = sorted([f"{request.url._url}/{f}" for f in files if not (f.startswith('.') or f.startswith('_'))])
         return {'dirname': dir_path, 'files': files_paths}
+    elif findVersionedFile:
+        # Try to find the versioned files
+        most_recent_file = get_editable_file(filepath)
+        if most_recent_file is None:
+            raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
+        else:
+            return File(name=most_recent_file.relative_to(basedir).as_posix(), content=most_recent_file.read_text())
     else:
         raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
 
-@app.put("/files/{dir_path:path}")
-def save_file(dir_path: str, fileData: File, request: Request) -> dict:
-    if dir_path.find("..") != -1:
-        raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
-    
-    newVer = fileData.prevVer + 1
-    name = Path(fileData.name)
-    filepath = Path(OUTPUT_CODE_DIR + "./" + fileData.loc + "./" + name.stem + "." + str(newVer) + name.suffix)
+def get_editable_file(file_path: Path):
+    # Find the highest versioned file in the output folder
+    stem = file_path.stem    # string - /outputdir/html/css/styles
+    file_list = [file for file in file_path.parent.glob(stem + ".*")]
+    if len(file_list) > 0:
+        return sorted(file_list, key=lambda x: get_version(x), reverse=True)[0]
+    else:
+        return None
 
-    if filepath.exists():
-        raise HTTPException(status_code=409, detail={'msg': f"File [{fileData.name}] with version [{newVer}] already exists."})
+def get_version(file_path):
+    split_name = file_path.name.split('.')
+    if len(split_name) == 1:
+        return 0
+    if split_name[-1].isdigit():
+        return int(split_name[-1])
+    elif split_name[-2].isdigit():
+        return int(split_name[-2])
+    else:
+        return 0
+
+@app.put("/files/{dir_path:path}")
+def save_file(dir_path: str, fileData: File, request: Request) -> File:
+    if dir_path.find("..") != -1 or fileData.name.find("..") != -1:
+        raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
+
+    file_path = Path(fileData.name)   # a/b/n1, a/b/n1.py, n1.1.py, n1.tar.1.gz, n1.1, n1.tar.gz
+    dir_path  = file_path.parent      # a/b,    a/b,
+    base_name = file_path.stem        # n1,     n1,        n1.1,    n1.tar.1,    n1,   n1.tar
+    suffix = file_path.suffix         # '',     .py,       .py,     .gz,         .1,   .gz
+
+    # Using Path().name to split for cases where dir name has a '.' and we don't want dirname to be split
+    split_name = file_path.name.split('.')
+    curVer = 0
+    newVer = 0
+    newfilepath = None
+    if len(split_name) == 1:
+        # No suffix filename
+        newVer = curVer + 1
+        newfilepath = Path(OUTPUT_CODE_DIR + "/" + fileData.name + "." + str(newVer))
+    elif split_name[-1].isdigit():
+        # No suffix filename, having a version as suffix
+        if not Path(OUTPUT_CODE_DIR + "/" + fileData.name).exists():
+            raise HTTPException(status_code=409, detail={'msg': f"Versioned File [{fileData.name}] with version [{split_name[-1]}] does not exist."})
+            
+        curVer = int(split_name[-1])
+        newVer = curVer + 1
+        newfilepath = Path(OUTPUT_CODE_DIR + "/" + dir_path.name + "/" + base_name + "." + str(newVer))
+    elif split_name[-2].isdigit():
+        # With suffix filename, having a version as second last
+        if not Path(OUTPUT_CODE_DIR + "/" + fileData.name).exists():
+            raise HTTPException(status_code=409, detail={'msg': f"Versioned File [{fileData.name}] with version [{split_name[-2]}] does not exist."})
+            
+        curVer = int(split_name[-2])
+        newVer = curVer + 1
+        split_name[-2] = str(newVer)    # Replace the version number
+        newName = ".".join(split_name)
+        newfilepath = Path(OUTPUT_CODE_DIR + "/" + str(file_path.with_name(newName)))
+    else:
+        # There is no version in the filename and there are more than 1 parts in the filename
+        newVer = 1
+        newfilepath = Path(OUTPUT_CODE_DIR + "/" + dir_path.name + "/" + base_name + "." + str(newVer) + suffix)
+
+        #raise HTTPException(status_code=406, detail={'msg': f"File [{fileData.name}] not satisfying the versioning structure"})
+
+    if newfilepath.exists():
+        raise HTTPException(status_code=409, detail={'msg': f"File [{fileData.name}] with new version [{newVer}] already exists."})
 
     # Create the directory structure, don't raise exceptions if paths exist
-    filepath.parent.mkdir(mode=0o644, parents=True, exist_ok=True)
+    newfilepath.parent.mkdir(mode=0o644, parents=True, exist_ok=True)
 
     try:
-        filepath.touch(mode=0o644, exist_ok=False)  # Raises FileExistsError if file already exists (expecting this to take care of any race conditions too)
+        newfilepath.touch(mode=0o644, exist_ok=False)  # Raises FileExistsError if file already exists (expecting this to take care of any race conditions too)
     except FileExistsError:
-        raise HTTPException(status_code=409, detail={'msg': f"File [{fileData.name}] with version [{newVer}] already exists."})
+        raise HTTPException(status_code=409, detail={'msg': f"File [{fileData.name}] with new version [{newVer}] already exists."})
 
-    filepath.write_text(fileData.content)
+    newfilepath.write_text(fileData.content)
     
-    return {'msg': "File [" + str(filepath) + "] created successfully.", 'version': newVer}
+    fileData.name = newfilepath.relative_to(OUTPUT_CODE_DIR).as_posix()
+    fileData.version = newVer
+    fileData.content = None
+    return fileData
 
 if __name__ == "__main__":
     import uvicorn
