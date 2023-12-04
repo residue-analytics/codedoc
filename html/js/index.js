@@ -31,6 +31,41 @@ class LLMParamUIPair {
       this.btn.querySelector(".badge").innerHTML = event.target.value;
     });
   }
+
+  getValue() {
+    return this.elem.value;
+  }
+}
+
+class LLMParamsUI {
+  constructor() {
+    this.modelLLMParam = null;
+    this.sysPromParam = null;
+    this.usrPromParam = null;
+    this.ctxParam = null;
+    this.tempLLMParam = null;
+    this.toppLLMParam = null;
+    this.maxTokenParam = null;
+    this.reppenLLMParam = null;
+    this.prspenLLMParam = null;
+    this.topkLLMParam = null;
+  }
+
+  getLLMParams() {
+    return new LLMParams(
+      globals.models.findByCode(this.modelLLMParam.getValue()).id, 
+      parseFloat(this.tempLLMParam.getValue()), 
+      parseInt(this.maxTokenParam.getValue()), 
+      parseFloat(this.toppLLMParam.getValue()), 
+      parseInt(this.topkLLMParam.getValue()),
+      parseFloat(this.reppenLLMParam.getValue()), 
+      parseFloat(this.prspenLLMParam.getValue()), 
+      this.sysPromParam.getValue(), 
+      this.ctxParam.getValue(),
+      null, 
+      this.usrPromParam.getValue()
+    );
+  }
 }
 
 class Globals {
@@ -39,15 +74,7 @@ class Globals {
     this.editor = null;
     this.llmSelector = null;
     this.models = null;
-
-    this.modelLLMParam = null;
-    this.sysPromParam = null;
-    this.usrPromParam = null;
-    this.tempLLMParam = null;
-    this.toppLLMParam = null;
-    this.maxTokenParam = null;
-    this.reppenLLMParam = null;
-    this.topkLLMParam = null;
+    this.llmParamsUI = new LLMParamsUI();
   }
 
   setTempLLMParam(btnID, elemID) {
@@ -63,12 +90,7 @@ class Globals {
     this.readOnlyEditor.setupListenerOnRoot((name, type) => {
       if (type == 'file') {
         this.editor.editFile(name).catch(err => {
-          if (err.code == 404) {
-
-            UIUtils.showAlert("erroralert", "First version of the file being created");
-          } else {
-            UIUtils.showAlert("erroralert", err);
-          }
+          UIUtils.showAlert("erroralert", err);
         });
       }
       console.log(`Clicked on [${name}] of type [${type}]`);
@@ -92,96 +114,101 @@ const globals = new Globals();
 (function () {
 
   // Attach Event Handlers
-  globals.modelLLMParam = new LLMParamUIPair('ModelSelectorBtn', 'ModelSelector');
-//  document.getElementById('ModelSelectorBtn').addEventListener('click', function () {
-//    document.getElementById('ModelSelector').parentElement.classList.toggle('visually-hidden');
-//  });
-//  document.getElementById('ModelSelector').addEventListener('input', function (event) {
-//    document.getElementById('ModelSelectorBtn').querySelector(".badge").innerHTML = this.value;
-//  });
+  globals.llmParamsUI.modelLLMParam = new LLMParamUIPair('ModelSelectorBtn', 'ModelSelector');
+  globals.llmParamsUI.sysPromParam = new LLMParamUIPair('SysPromptBtn', 'SysPromptInput', false);
+  globals.llmParamsUI.ctxParam = new LLMParamUIPair('ContextBtn', 'ContextInput', false);
+  globals.llmParamsUI.usrPromParam = new LLMParamUIPair('UsrPromptBtn', 'UsrPromptInput', false);
+  globals.llmParamsUI.tempLLMParam = new LLMParamUIPair('TemperatureBtn', 'TemperatureInput');
+  globals.llmParamsUI.toppLLMParam = new LLMParamUIPair('ToppBtn', 'ToppInput');
+  globals.llmParamsUI.maxTokenParam = new LLMParamUIPair('MaxTokensBtn', 'MaxTokensInput', false, true);
+  globals.llmParamsUI.reppenLLMParam = new LLMParamUIPair('RepeatPenaltyBtn', 'RepeatPenaltyInput');
+  globals.llmParamsUI.prspenLLMParam = new LLMParamUIPair('PresencePenaltyBtn', 'PresencePenaltyInput');
+  globals.llmParamsUI.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', true, true);
 
-  globals.sysPromParam = new LLMParamUIPair('SysPromptBtn', 'SysPromptInput', false);
-//  document.getElementById('SysPromptBtn').addEventListener('click', function () {
-//    document.getElementById('SysPromptInput').parentElement.classList.toggle('visually-hidden');
-//  });
-
-  globals.usrPromParam = new LLMParamUIPair('UsrPromptBtn', 'UsrPromptInput', false);
-//  document.getElementById('UsrPromptBtn').addEventListener('click', function () {
-//    document.getElementById('UsrPromptInput').parentElement.classList.toggle('visually-hidden');
-//  });
-
-  globals.tempLLMParam = new LLMParamUIPair('TemperatureBtn', 'TemperatureInput');
-//  document.getElementById('TemperatureBtn').addEventListener('click', function () {
-//    document.getElementById('TemperatureInput').parentElement.classList.toggle('visually-hidden');
-//  });
-//  document.getElementById('TemperatureInput').addEventListener('input', function (event) {
-//    document.getElementById('TemperatureBtn').querySelector(".badge").innerHTML = this.value;
-//  });
-
-  globals.toppLLMParam = new LLMParamUIPair('ToppBtn', 'ToppInput');
-//  document.getElementById('ToppBtn').addEventListener('click', function () {
-//    document.getElementById('ToppInput').parentElement.classList.toggle('visually-hidden');
-//  });
-//  document.getElementById('ToppInput').addEventListener('input', function (event) {
-//    document.getElementById('ToppBtn').querySelector(".badge").innerHTML = this.value;
-//  });
-
-  globals.maxTokenParam = new LLMParamUIPair('MaxTokensBtn', 'MaxTokensInput', false, true);
-//  document.getElementById('MaxTokensBtn').addEventListener('click', function () {
-//    document.getElementById('MaxTokensInput').parentElement.parentElement.classList.toggle('visually-hidden');
-//  });
-
-  globals.reppenLLMParam = new LLMParamUIPair('RepeatPenaltyBtn', 'RepeatPenaltyInput');
-//  document.getElementById('RepeatPenaltyBtn').addEventListener('click', function () {
-//    document.getElementById('RepeatPenaltyInput').parentElement.classList.toggle('visually-hidden');
-//  });
-//  document.getElementById('RepeatPenaltyInput').addEventListener('input', function (event) {
-//    document.getElementById('RepeatPenaltyBtn').querySelector(".badge").innerHTML = this.value;
-//  });
-
-  globals.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', true, true);
-//  document.getElementById('TopkBtn').addEventListener('click', function () {
-//    document.getElementById('TopkInput').parentElement.parentElement.classList.toggle('visually-hidden');
-//  });
-//  document.getElementById('TopkInput').addEventListener('input', function (event) {
-//    document.getElementById('TopkBtn').querySelector(".badge").innerHTML = this.value;
-//  });
-
-  document.getElementById('SendToLLM').addEventListener('click', function () {
-    let params = new LLMParams(
-      llmID = document.getElementById('ModelSelector').value, 
-      temp = 0.0, 
-      maxTokens = 0, 
-      topp = 0.0, 
-      topk = null,
-      repeat_penalty = null, 
-      sys_prompt = null, 
-      context = null,
-      code_snippet = null, 
-      user_prompt = ''
-    );
-    new LLMService().callLLM(params)
-    .then( resp => {
-      document.getElementById('ModelOutput').value = resp;
-    }).catch( err => {
-      document.getElementById('ModelOutput').value = err;
-    });
-    
+  document.getElementById('Discard').addEventListener('click', function () {
+      globals.editor.discardChanges();
   });
 
-  // Create the Read-only/Input Files Editor
-  try {
-    new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
-  } catch (err) {
-    console.log(err);
-  }
+  document.getElementById('SaveFile').addEventListener('click', function () {
+    try {
+      UIUtils.addSpinnerToIconButton('SaveFile');
+      new FilesService().saveFile(globals.editor.getCurFile()).then((codeFile) => {
+        UIUtils.rmSpinnerFromIconButton('SaveFile');
+        codeFile.content = globals.editor.getCode();
+        globals.editor.curFileSavedSuccessfully(codeFile);
+        UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}]`);
+      });
+    } catch (err) {
+      UIUtils.rmSpinnerFromIconButton('SaveFile');
+      UIUtils.showAlert("erroralert", err);
+    }
+  });
+
+  document.getElementById('SendToLLM').addEventListener('click', function () {
+    let params = globals.llmParamsUI.getLLMParams();
+    
+    document.getElementById('ModelOutput').value = "";
+    UIUtils.addSpinnerToIconButton('SendToLLM');
+    new LLMService().callLLM(params)
+    .then( resp => {
+      UIUtils.rmSpinnerFromIconButton('SendToLLM');
+      document.getElementById('ModelOutput').value = resp;
+    }).catch( err => {
+      UIUtils.rmSpinnerFromIconButton('SendToLLM');
+      document.getElementById('ModelOutput').value = err;
+    });
+  });
+  
+  document.getElementById('SendFileToLLM').addEventListener('click', function () {
+    let params = globals.llmParamsUI.getLLMParams();
+    params.code_snippet = globals.editor.getCode();
+    
+    document.getElementById('ModelOutput').value = "";
+    UIUtils.addSpinnerToIconButton('SendFileToLLM');
+    new LLMService().callLLM(params)
+    .then( resp => {
+      UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+      document.getElementById('ModelOutput').value = resp;
+    }).catch( err => {
+      UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+      document.getElementById('ModelOutput').value = err;
+    });
+  });
+
+  document.getElementById('SendSelectionToLLM').addEventListener('click', function () {
+    let params = globals.llmParamsUI.getLLMParams();
+    params.code_snippet = globals.editor.getSelectedCode();
+    if (!params.code_snippet || params.code_snippet.length == 0) {
+      UIUtils.showAlert("erroralert", "Nothing to send, no Code Selected in the Editor");
+      return;
+    }
+
+    document.getElementById('ModelOutput').value = "";
+    UIUtils.addSpinnerToIconButton('SendSelectionToLLM');
+    new LLMService().callLLM(params)
+    .then( resp => {
+      UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+      document.getElementById('ModelOutput').value = resp;
+    }).catch( err => {
+      UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+      document.getElementById('ModelOutput').value = err;
+    });
+  });
 
   window.addEventListener("load", (event) => {
     //console.log("page is fully loaded");
     globals.setEditor("editor2");
     globals.setReadOnlyEditor("editor1");
     globals.setLLModels("ModelSelector");
+
+    // Populate the input directory tree in the read only editor
+    try {
+      new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
+    } catch (err) {
+      console.log(err);
+    }
   });
+
+  //document.getElementById("evalinput").addEventListener("click", function(event) { UIUtils.addSpinnerToIconButton("SendFileToLLM");  });
 }
 )()
-

@@ -1,4 +1,4 @@
-import { Model, ModelList } from "./models.js";
+import { Model, ModelList, CodeFile } from "./models.js";
 
 class WebError extends Error {
 
@@ -33,7 +33,7 @@ class FetchAPI {
     return await response.json();
   }
 
-  async put(url, data) {
+  async put(url, data) {    // data : JSON
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
@@ -119,12 +119,26 @@ class FilesService {
 
     const response = await new FetchAPI().get('/files/' + filepath, { 'editable': editable });
     if (filepath && response.name == filepath) {
-      return response.content;
+      return CodeFile.fromJSON(response);
     } else if (editable && filepath && response.name) {
-      return response.content;
+      return CodeFile.fromJSON(response);
     } else {
       console.log(response);
       throw new Error(`Unable to fetch File [${filepath}]`);
+    }
+  }
+
+  async saveFile(codeFile) {
+    if (!codeFile || codeFile.content == null) {
+      throw new Error(`Cannot save file [${codeFile.name}] without content.`);
+    }
+
+    const response = await new FetchAPI().put('/files/' + codeFile.name, codeFile.toJSON());
+    if (response.name && response.version) {
+      return CodeFile.fromJSON(response);  // This response does not have the "file.content"
+    } else {
+      console.log(`Incomplete Save File response [${JSON.stringify(response)}]`);
+      throw new Error("Unable to save successfully, see console");
     }
   }
 }

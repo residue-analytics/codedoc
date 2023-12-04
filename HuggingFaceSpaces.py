@@ -118,7 +118,7 @@ class HuggingFaceSpaces(LLM):
         else:
             raise ValueError(f"api_name or fn_name required as params")
 
-        if "error" in response:
+        if "error" in response and not isinstance(response, str):
             raise ValueError(f"Error raised by Gradio API: {response['error']}")
 
         if self.task == "text-generation":

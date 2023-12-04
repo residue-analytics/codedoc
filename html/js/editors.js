@@ -1,5 +1,6 @@
 import { FilesService } from "./services.js";
 import { UIUtils } from "./utils.js";
+import { CodeFile, CodeFileCache } from "./models.js";
 
 class VanillaEditor {
   constructor(editorID) {
@@ -127,33 +128,51 @@ class AceEditor {
   constructor(editorID) {
     this.editor = ace.edit(editorID);
     this.editor.setTheme("ace/theme/monokai");
-    this.curFilename = null;
+    this.curFile = null;
+    this.fileCache = new CodeFileCache();
   }
 
   async editFile(filepath) {
-    if (this.curFilename == null) {
-      let content = null;
+    let file = null;
+    if (this.curFile == null) {
       try {
-        content = await new FilesService().getFileContent(filepath, true);
+        file = await new FilesService().getFileContent(filepath, true);
       } catch (err) {
         if (err.code == 404) {
-          UIUtils.showAlert("erroralert", "First version of the file being created");
-          content = await new FilesService().getFileContent(filepath, false);  // Get the original file
+          file = await new FilesService().getFileContent(filepath, false);  // Get the original file
         } else {
           throw err;
         }
       }
 
-      this.editor.session.setValue(content);
-      this.setEditMode(filepath);
-      this.curFilename = filepath;    // We are missing the version number
-      this.editor.session.selection.on('changeSelection', function (e) { console.log("Selection changed") });
+      UIUtils.showAlert("erroralert", `Version [${file.version}] of file [${file.name}] is in the Editor`);
+      this.editor.session.setValue(file.content);
+      this.setEditMode(file.name);
+      this.curFile = file;
+      this.fileCache.put(this.curFile);
+      this.editor.session.selection.on('changeSelection', function (e) { });
     } else {
       // save session and then create new session for new file?
-      console.log(`Already editing [${this.curFilename}]. Overwriting...`);
-      this.curFilename = null;
+      console.log(`Already editing [${this.curFile.name}]`);
+      // We already have code of the current file in cache. Check if there were any modifications done.
+      if (this.curFile.content != this.getCode()) {
+        UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
+        return;
+      } else {
+        this.fileCache.put(this.curFile);
+        this.curFile = null;
+      }
       this.editFile(filepath);
     }
+  }
+
+  discardChanges() {
+    this.editor.session.setValue(this.curFile.content);
+  }
+
+  curFileSavedSuccessfully(file) {
+    this.curFile = file;
+    this.fileCache.put(file);
   }
 
   setEditMode(filepath) {
@@ -178,6 +197,10 @@ class AceEditor {
 
   getSelectedCode() {
     return this.editor.getSelectedText();
+  }
+
+  getCurFile() {
+    return new CodeFile(this.curFile.name, this.curFile.version, this.getCode());
   }
 }
 

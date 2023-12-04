@@ -38,6 +38,76 @@ class UIUtils {
       select.appendChild(optNode);
     }
   }
+
+  static addSpinnerToIconButton(nodeID) {
+    const btn = document.getElementById(nodeID);
+    if (!btn) {
+      return;
+    }
+
+    let count = 0;
+    if (btn.hasAttribute("data-rescnt")) {
+      count = parseInt(btn.getAttribute("data-rescnt"));
+      if (count > 0) {
+        btn.setAttribute("data-rescnt", ++count);  // count automatically converted to string
+        // console.log(`Add Spinner Count [${nodeID}][${count}]`);
+        return;
+      }
+    }
+
+    btn.disabled = true;
+    btn.setAttribute("data-rescnt", ++count);
+
+    const icon = btn.querySelector("span");  // Icon span, having class name as bi-
+    if (!icon) {
+      const spinner = document.createElement('span');
+      spinner.className = 'spinner-border spinner-border-sm';
+      spinner.role = 'status';
+      spinner.innerHTML = " ";
+      btn.appendChild(spinner);
+      return;
+    }
+
+    btn.setAttribute("data-resname", icon.className);
+
+    icon.className = 'spinner-border spinner-border-sm';
+    icon.role = 'status';
+  }
+
+  static rmSpinnerFromIconButton(nodeID) {
+    const btn = document.getElementById(nodeID);
+    if (!btn) {
+      //console.log("Invalid Element ID for rmSpinner [%s]" % nodeID);
+      return;
+    }
+
+    let count = 0;
+    if (btn.hasAttribute("data-rescnt")) {
+      count = parseInt(btn.getAttribute("data-rescnt"));
+      if (count > 1) {
+        btn.setAttribute("data-rescnt", --count);  // count automatically converted to string
+        // console.log(`Add Spinner Count [${nodeID}][${count}]`);
+        return;
+      }
+    }
+
+    btn.setAttribute("data-rescnt", 0);
+    const icon = btn.querySelector("span");
+    if (!icon) {
+      btn.disabled = false;
+      return;
+    } else {
+      let iconClass = btn.getAttribute("data-resname");
+      if (iconClass) {
+        icon.className = iconClass;
+        icon.role = null;
+      } else {
+        btn.removeChild(icon);
+      }
+    }
+
+    btn.disabled = false;
+  }
 }
 
 export { UIUtils };

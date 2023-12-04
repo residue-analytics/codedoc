@@ -5,3 +5,4 @@ langchain
 langserve
 gradio_client
 pydantic
+openai

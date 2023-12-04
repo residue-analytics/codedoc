@@ -11,13 +11,19 @@ from langchain.chains    import LLMChain
 from langchain.globals   import set_llm_cache
 from langchain.cache     import InMemoryCache
 from langchain.schema    import BaseOutputParser
+from langchain.chat_models import AzureChatOpenAI
+from langchain.chat_models import ChatOpenAI
+from langchain.schema    import HumanMessage
+from langchain.llms      import OpenAI
 from HuggingFaceSpaces   import HuggingFaceSpaces
 from pydantic            import BaseModel
 from langserve           import add_routes
 from pathlib             import Path
+from sys                 import exit
 import ssl
 import os
 import copy
+
 
 INPUT_CODE_DIR = "./oldcode"
 OUTPUT_CODE_DIR = "./newcode"
@@ -54,6 +60,56 @@ MODELS = {
             'repetition_penalty': 1,
             'api_name': '/chat'
         }
+    },
+    'azure-openai-chat': {
+        'id': 'AzureAI/OpenAIChat',
+        'name': 'Azure OpenAI Chat',
+        'code': 'AzOpC',
+        'api-key': None,
+        'provider': 'AzureChatOpenAI',
+        'model_kwargs': {
+            'system_prompt': 'You are a helpful agent',
+            'max_new_tokens': 256,
+            'temperature': 0.1,
+            'topp_nucleus_sampling': 0.9,
+            'topk': 40,
+            'repetition_penalty': 1,
+            'api_name': '/chat'
+        }
+    },
+    'openai': {
+        'id': 'OpenAI',
+        'name': 'OpenAI',
+        'code': 'OAI',
+        'api-key': None,
+        'provider': 'OpenAI',
+        'model_kwargs': {
+            'system_prompt': 'You are a helpful agent',
+            'max_new_tokens': 256,
+            'temperature': 0.1,
+            'topp_nucleus_sampling': 0.9,
+            'topk': 40,
+            'repetition_penalty': 1,
+            'presence_penalty': 0,
+            'api_name': '/chat'
+        }
+    },
+    'chatopenai': {
+        'id': 'ChatOpenAI',
+        'name': 'ChatOpenAI',
+        'code': 'COAI',
+        'api-key': None,
+        'provider': 'ChatOpenAI',
+        'model_kwargs': {
+            'system_prompt': 'You are a helpful agent',
+            'max_new_tokens': 256,
+            'temperature': 0.1,
+            'topp_nucleus_sampling': 0.9,
+            'topk': 40,
+            'repetition_penalty': 1,
+            'presence_penalty': 0,
+            'api_name': '/chat'
+        }
     }
 }
 
@@ -66,7 +122,6 @@ def copy_dict_and_remove_keys(original_dict, keys_to_remove):
             else:
                 new_dict[key] = value
     return new_dict
-
 
 class CommaSeparatedListOutputParser(BaseOutputParser[List[str]]):
     """Parse the output of an LLM call to a comma-separated list."""
@@ -114,15 +169,41 @@ add_routes(
     path="/spaces_chain",
 )
 
+class EnvVars:
+    @classmethod
+    def checkEnviron(cls, provider:str):
+        res = True
+        if provider == "AzureOpenAI":
+            res &= cls.checkVar("OPENAI_API_TYPE", provider)
+            res &= cls.checkVar("OPENAI_API_VERSION", provider)
+            res &= cls.checkVar("OPENAI_API_BASE", provider)
+            res &= cls.checkVar("OPENAI_API_KEY", provider)
+        elif provider == "OpenAI":
+            res &= cls.checkVar("OPENAI_API_KEY", provider)
+        elif provider == "AzureChatOpenAI":
+            res &= cls.checkVar("AZURE_OPENAI_API_KEY", provider)
+            res &= cls.checkVar("AZURE_OPENAI_ENDPOINT", provider)
+            res &= cls.checkVar("OPENAI_API_VERSION", provider)
+            res &= cls.checkVar("AZURE_DEPLOYMENT_NAME", provider)
+        
+        return res
+    
+    @classmethod
+    def checkVar(cls, varname:str, provider:str):
+        if (os.getenv(varname)) is None:
+            print(f"Env Var [{varname}] is required for provider [{provider}]")
+            return False
+        return True
 
 class LLMParams(BaseModel):
     llmID: str
-    temp: float
-    maxTokens: int
-    topp: float
+    temperature: float
+    max_new_tokens: int
+    topp_nucleus_sampling: float
     topk: int | None = None
-    repeat_penalty: float | None = None
-    sys_prompt: str = "You are a helpful assistant"
+    repetition_penalty: float | None = None
+    presence_penalty: float | None = None
+    system_prompt: str | None = "You are a helpful assistant"
     context: str | None = None
     code_snippet: str | None = None
     user_prompt: str
@@ -132,7 +213,6 @@ class File(BaseModel):
     version: int | None = None
     content: str | None = None # file content
 
-
 @app.post("/llm/")
 async def call_llm(params: LLMParams) -> dict:
     # initialize Spaces LLM
@@ -140,39 +220,52 @@ async def call_llm(params: LLMParams) -> dict:
     if model_obj is None:
         raise HTTPException(status_code=404, detail={'msg':f"Model ID {params.llmID} not available"})
 
-    if model_obj['provider'] != 'HuggingFaceSpaces':
-        raise HTTPException(status_code=404, detail={'msg':f"Model Provider {params['provider']} not available"})
-
     kwargs = copy.deepcopy(model_obj['model_kwargs'])
-    kwargs['temperature'] = params.temp
-    kwargs['max_new_tokens'] = params.maxTokens
-    kwargs['topp_nucleus_sampling'] = params.topp
+    kwargs['temperature'] = params.temperature
+    kwargs['max_new_tokens'] = params.max_new_tokens
+    kwargs['topp_nucleus_sampling'] = params.topp_nucleus_sampling
     if params.topk is not None and 'topk' in kwargs:
         kwargs['topk'] = params.topk
-    if params.repeat_penalty is not None and 'repetition_penalty' in kwargs:
-        kwargs['repetition_penalty'] = params.repeat_penalty
+    if params.repetition_penalty is not None and 'repetition_penalty' in kwargs:
+        kwargs['repetition_penalty'] = params.repetition_penalty
+    if params.presence_penalty is not None and 'presence_penalty' in kwargs:
+        kwargs['presence_penalty'] = params.presence_penalty
     if 'system_prompt' in kwargs:
-        kwargs['system_prompt'] = params.sys_prompt
-
-    local_llm = HuggingFaceSpaces(
-        task="summarization",
-        repo_id=model_obj['id'],
-        model_kwargs=kwargs
-    )
+        kwargs['system_prompt'] = params.system_prompt
 
     local_template = """Context:{ctxt} 
 
-    Code:{code} 
+        Code:{code} 
 
-    {user}."""
+        {user}."""
 
     local_prompt = PromptTemplate(
-        template=local_template,
-        input_variables=['ctxt', 'code', 'user']
-    )
+            template=local_template,
+            input_variables=['ctxt', 'code', 'user'])
+
+    local_llm = None
+
+    if model_obj['provider'] == 'AzureChatOpenAI':
+        model = AzureChatOpenAI(
+            openai_api_version=os.getenv('OPENAI_API_VERSION'),
+            azure_deployment=os.getenv('AZURE_DEPLOYMENT_NAME') )
+        message = HumanMessage(params.user_prompt)
+        return { 'model_resp': str(model([message])) }
+    elif model_obj['provider'] == 'OpenAI':
+        local_llm = OpenAI()
+    elif model_obj['rpovider'] == 'ChatOpenAI':
+        model = ChatOpenAI()
+        message = HumanMessage(params.user_prompt)
+        return { 'model_resp': str(model([message])) }
+    elif model_obj['provider'] == 'HuggingFaceSpaces':
+        local_llm = HuggingFaceSpaces(
+            task="summarization",
+            repo_id=model_obj['id'],
+            model_kwargs=kwargs)
+    else:
+        raise HTTPException(status_code=404, detail={'msg':f"Model Provider {params['provider']} not available"})
 
     local_chain = local_prompt | local_llm
-
     resp = local_chain.invoke({'ctxt':params.context, 'code':params.code_snippet, 'user':params.user_prompt})
 
     return { 'model_resp': resp }
@@ -220,7 +313,7 @@ def get_file(dir_path: str, raw: bool = False, editable: bool = False, request: 
         if most_recent_file is None:
             raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
         else:
-            return File(name=most_recent_file.relative_to(basedir).as_posix(), content=most_recent_file.read_text())
+            return File(name=most_recent_file.relative_to(basedir).as_posix(), version=get_version(most_recent_file), content=most_recent_file.read_text())
     else:
         raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
 
@@ -306,8 +399,18 @@ def save_file(dir_path: str, fileData: File, request: Request) -> File:
     fileData.content = None
     return fileData
 
+def checkEnviron():
+    res = True
+    for model in MODELS.values():
+        res &= EnvVars.checkEnviron(model["provider"])
+    
+    if not res:
+        exit(1)
+
 if __name__ == "__main__":
     import uvicorn
+    
+    #checkEnviron()
 
     #uvicorn.run(app, host="localhost", port=8000, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
     uvicorn.run(app, host="localhost", port=8000)

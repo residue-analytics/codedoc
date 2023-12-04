@@ -56,14 +56,14 @@
             </a>
             <ul class="dropdown-menu" aria-labelledby="practiceDropdown">
               <li><a class="dropdown-item" href="#practice/simulator">Simulator</a></li>
-              <li><a class="dropdown-item" href="#practice/arena">Playground</a></li>
+              <li><a class="dropdown-item" href="/spaces_chain/playground">Playground</a></li>
             </ul>
           </li>
           <li class="nav-item col-6 col-md-auto">
             <a class="nav-link disabled" aria-current="page" href="#arena">Settings</a>
           </li>
           <li class="nav-item col-6 col-md-auto">
-            <a class="nav-link" aria-current="page" href="#faqs">FAQs</a>
+            <a class="nav-link" aria-current="page" href="/docs">API</a>
           </li>
         </ul>
       </div>
@@ -92,36 +92,52 @@ function foo(items) {
       </div>
     
       <div class="row align-items-top mb-3">
-        <div class="btn-toolbar justify-content-between mb-3" role="toolbar" aria-label="Toolbar with button groups">
-          <div class="btn-group me-2" role="group" aria-label="First group">
-            <button id="ModelSelectorBtn" type="button" class="btn btn-outline-secondary active" data-bs-toggle="button">
+        <div class="btn-toolbar justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+          <div class="btn-group me-2 mb-3" role="group" aria-label="First group">
+            <button id="ModelSelectorBtn" type="button" class="btn btn-outline-secondary btn-sm active" data-bs-toggle="button">
               LLM <span class="badge text-bg-primary">None</span>
             </button>
-            <button id="SysPromptBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+            <button id="SysPromptBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
               SP
             </button>
-            <button id="UsrPromptBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">UP</button>
-            <button id="TemperatureBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+            <button id="ContextBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+              Ctx
+            </button>
+            <button id="UsrPromptBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+              UP
+            </button>
+            <button id="TemperatureBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
               Temp <span class="badge text-bg-primary">0.1</span>
             </button>
-            <button id="ToppBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+            <button id="ToppBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
               Top P <span class="badge text-bg-primary">0.5</span>
             </button>
-            <button id="MaxTokensBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">Max Toks</button>
-            <button id="RepeatPenaltyBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
-              Rep Pen <span class="badge text-bg-primary">0.5</span>
+            <button id="MaxTokensBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">Max Toks</button>
+            <button id="RepeatPenaltyBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+              Rep Pen <span class="badge text-bg-primary">1.0</span>
             </button>
-            <button id="TopkBtn" type="button" class="btn btn-outline-secondary" data-bs-toggle="button">
+            <button id="PresencePenaltyBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+              Prsn Pen <span class="badge text-bg-primary">0.0</span>
+            </button>
+            <button id="TopkBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
               Top K <span class="badge text-bg-primary">10</span>
             </button>
+            <button id="SaveParams" title="Save Params" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+              <span class="bi bi-floppy"></span>
+            </button>
           </div>
-          <div>
-            <button id="SendToLLM" type="button" class="btn btn-primary" 
-              title="Send the prompts and params without any code">Send</i></button>
-            <button id="SendFileToLLM" type="button" class="btn btn-primary" 
-              title="Send File to LLM along with the prompts and params">Send <i class="bi bi-file-code"></i></button>
-            <button id="SendSelectionToLLM" type="button" class="btn btn-primary"
-              title="Send Selected Text to LLM along with the prompts and params">Send <i class="bi bi-text-paragraph"></i></button>
+
+          <div class="mb-3">
+            <button id="Discard" type="button" class="btn btn-primary btn-sm" 
+              title="Discard the changes made to the file, load last version">Discard</button>
+            <button id="SaveFile" type="button" class="btn btn-primary btn-sm" 
+              title="Save the changed file as a new Version on server">File Save</button>
+            <button id="SendToLLM" type="button" class="btn btn-primary btn-sm" 
+              title="Send the prompts and params without any code">Send</button>
+            <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm" 
+              title="Send File to LLM along with the prompts and params">Send <span class="bi bi-file-code"></span></button>
+            <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
+              title="Send Selected Text to LLM along with the prompts and params">Send <span class="bi bi-text-paragraph"></span></button>
           </div>
         </div>
       </div>
@@ -147,6 +163,16 @@ function foo(items) {
               <div class="form-text">
                 The system prompt helps set the behavior of the LLM/assistant. If properly crafted, the system message 
                 can be used to set the tone and the kind of response by the model.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="ContextInput" class="form-label">Context</label>
+              <textarea id="ContextInput" class="form-control" rows="6" placeholder="Context"></textarea>
+              <div class="form-text">
+                The overall context of the conversation with the LLM. In a to-and-fro chat scenarios, whole chat
+                session history, including the answers by the LLM, becomes part of the context. This is
+                critical to be kept in check as the length (Max Tokens) is limited and too big a context can be
+                detrimental to the overall quality of the responses.
               </div>
             </div>
             <div class="mb-3 visually-hidden">
@@ -191,7 +217,14 @@ function foo(items) {
             </div>
             <div class="mb-3 visually-hidden">
               <label for="RepeatPenaltyInput" class="form-label">Repeat Penalty</label>
-              <input id="RepeatPenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="0.5">
+              <input id="RepeatPenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="1">
+              <div class="form-text">
+                A larger value decreases the likelihood of repetition of the same token/word/line according to frequency.
+              </div>
+            </div>
+            <div class="mb-3 visually-hidden">
+              <label for="PresencePenaltyInput" class="form-label">Presence Penalty</label>
+              <input id="PresencePenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="0">
               <div class="form-text">
                 A larger value decreases the likelihood of repetition of the same token/word/line.
               </div>
@@ -220,6 +253,7 @@ function foo(items) {
           <form>
             <label for="ModelOutput" class="form-label">LLM Response</label>
             <textarea id="ModelOutput" class="form-control" rows="12"></textarea>
+            <!--button id="evalinput" type="button" class="btn btn-primary"-->
           </form>
         </div>
       </div>
@@ -254,6 +288,5 @@ function foo(items) {
     src="https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js"></script>
   
   <script type="module" src="js/index.js"></script>
-
 </body>
 </html>
