@@ -1,38 +1,41 @@
 #!/usr/bin/env python
 from typing import List
+from typing import Annotated
 
-from fastapi             import FastAPI, Request, HTTPException
+from fastapi             import Depends, FastAPI, Request, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses   import FileResponse
 from langchain.globals   import set_verbose
 from langchain.globals   import set_debug
-from langchain.prompts   import PromptTemplate
-from langchain.chains    import LLMChain
 from langchain.globals   import set_llm_cache
 from langchain.cache     import InMemoryCache
+from langchain.prompts   import PromptTemplate
 from langchain.schema    import BaseOutputParser
+from langchain.schema    import HumanMessage
 from langchain.chat_models import AzureChatOpenAI
 from langchain.chat_models import ChatOpenAI
-from langchain.schema    import HumanMessage
 from langchain.llms      import OpenAI
-from HuggingFaceSpaces   import HuggingFaceSpaces
-from pydantic            import BaseModel
+from langchain.chains    import LLMChain
 from langserve           import add_routes
 from pathlib             import Path
 from sys                 import exit
 import ssl
 import os
 import copy
+from libs.data           import *
+from libs.llms           import HuggingFaceSpaces
+from libs                import auth
+from libs.auth           import get_current_active_user, User
 
 
 INPUT_CODE_DIR = "./oldcode"
 OUTPUT_CODE_DIR = "./newcode"
 
-keys_to_remove = ['api-key', 'id', 'api_name', 'fn_index']
+keys_to_remove = ['api-key', 'id_for_prvdr', 'api_name', 'fn_index']
 MODELS_FOR_UI = None
 MODELS = {
-    'code_llama_playground': { 
-        'id': 'codellama/codellama-playground', 
+    'code_llama_playground': {
+        'id_for_prvdr': 'codellama/codellama-playground', 
         'name': 'Code Llama Playground',
         'code': 'CLP',
         'api-key': None, 
@@ -46,7 +49,7 @@ MODELS = {
         }
     },
     'llama2-7b': {
-        'id': 'huggingface-projects/llama-2-7b-chat',
+        'id_for_prvdr': 'huggingface-projects/llama-2-7b-chat',
         'name': 'Llama2 7B',
         'code': 'L27B',
         'api-key': None,
@@ -62,7 +65,7 @@ MODELS = {
         }
     },
     'azure-openai-chat': {
-        'id': 'AzureAI/OpenAIChat',
+        'id_for_prvdr': 'AzureAI/OpenAIChat',
         'name': 'Azure OpenAI Chat',
         'code': 'AzOpC',
         'api-key': None,
@@ -72,15 +75,27 @@ MODELS = {
             'max_new_tokens': 256,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'topk': 40,
-            'repetition_penalty': 1,
-            'api_name': '/chat'
+            'repetition_penalty': 1
         }
     },
-    'openai': {
-        'id': 'OpenAI',
-        'name': 'OpenAI',
-        'code': 'OAI',
+    'azure-openai-llm': {
+        'id_for_prvdr': 'text-davinci-003',
+        'name': 'Azure OpenAI LLM',
+        'code': 'AzOpL',
+        'api-key': None,
+        'provider': 'AzureOpenAILLM',
+        'model_kwargs': {
+            'system_prompt': 'You are a helpful agent',
+            'max_new_tokens': 256,
+            'temperature': 0.1,
+            'topp_nucleus_sampling': 0.9,
+            'repetition_penalty': 1
+        }
+    },
+    'openai-llm': {
+        'id_for_prvdr': 'text-davinci-003',
+        'name': 'OpenAI LLM',
+        'code': 'OpLM',
         'api-key': None,
         'provider': 'OpenAI',
         'model_kwargs': {
@@ -88,15 +103,13 @@ MODELS = {
             'max_new_tokens': 256,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'topk': 40,
             'repetition_penalty': 1,
-            'presence_penalty': 0,
-            'api_name': '/chat'
+            'presence_penalty': 0
         }
     },
-    'chatopenai': {
-        'id': 'ChatOpenAI',
-        'name': 'ChatOpenAI',
+    'openai-chat': {
+        'id_for_prvdr': 'ChatOpenAI',
+        'name': 'OpenAI Chat',
         'code': 'COAI',
         'api-key': None,
         'provider': 'ChatOpenAI',
@@ -105,10 +118,8 @@ MODELS = {
             'max_new_tokens': 256,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'topk': 40,
             'repetition_penalty': 1,
-            'presence_penalty': 0,
-            'api_name': '/chat'
+            'presence_penalty': 0
         }
     }
 }
@@ -146,6 +157,7 @@ app = FastAPI(
 
 # To serve static files from /html directory
 app.mount("/html", StaticFiles(directory="./html", html=True), name="html")
+app.include_router(auth.router)
 
 user_template = """{user_prompt}."""
 
@@ -169,50 +181,6 @@ add_routes(
     path="/spaces_chain",
 )
 
-class EnvVars:
-    @classmethod
-    def checkEnviron(cls, provider:str):
-        res = True
-        if provider == "AzureOpenAI":
-            res &= cls.checkVar("OPENAI_API_TYPE", provider)
-            res &= cls.checkVar("OPENAI_API_VERSION", provider)
-            res &= cls.checkVar("OPENAI_API_BASE", provider)
-            res &= cls.checkVar("OPENAI_API_KEY", provider)
-        elif provider == "OpenAI":
-            res &= cls.checkVar("OPENAI_API_KEY", provider)
-        elif provider == "AzureChatOpenAI":
-            res &= cls.checkVar("AZURE_OPENAI_API_KEY", provider)
-            res &= cls.checkVar("AZURE_OPENAI_ENDPOINT", provider)
-            res &= cls.checkVar("OPENAI_API_VERSION", provider)
-            res &= cls.checkVar("AZURE_DEPLOYMENT_NAME", provider)
-        
-        return res
-    
-    @classmethod
-    def checkVar(cls, varname:str, provider:str):
-        if (os.getenv(varname)) is None:
-            print(f"Env Var [{varname}] is required for provider [{provider}]")
-            return False
-        return True
-
-class LLMParams(BaseModel):
-    llmID: str
-    temperature: float
-    max_new_tokens: int
-    topp_nucleus_sampling: float
-    topk: int | None = None
-    repetition_penalty: float | None = None
-    presence_penalty: float | None = None
-    system_prompt: str | None = "You are a helpful assistant"
-    context: str | None = None
-    code_snippet: str | None = None
-    user_prompt: str
-
-class File(BaseModel):
-    name: str           # loc/loc/program_name.ver.js ver=1, 2, 3
-    version: int | None = None
-    content: str | None = None # file content
-
 @app.post("/llm/")
 async def call_llm(params: LLMParams) -> dict:
     # initialize Spaces LLM
@@ -233,17 +201,8 @@ async def call_llm(params: LLMParams) -> dict:
     if 'system_prompt' in kwargs:
         kwargs['system_prompt'] = params.system_prompt
 
-    local_template = """Context:{ctxt} 
-
-        Code:{code} 
-
-        {user}."""
-
-    local_prompt = PromptTemplate(
-            template=local_template,
-            input_variables=['ctxt', 'code', 'user'])
-
     local_llm = None
+    local_template = "Context:{ctxt} \n\nCode:{code} \n\n{user}."
 
     if model_obj['provider'] == 'AzureChatOpenAI':
         model = AzureChatOpenAI(
@@ -252,18 +211,25 @@ async def call_llm(params: LLMParams) -> dict:
         message = HumanMessage(params.user_prompt)
         return { 'model_resp': str(model([message])) }
     elif model_obj['provider'] == 'OpenAI':
-        local_llm = OpenAI()
-    elif model_obj['rpovider'] == 'ChatOpenAI':
+        local_llm = OpenAI(temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
+            top_p=kwargs['topp_nucleus_sampling'], frequency_penalty=kwargs['repetition_penalty'], 
+            presence_penalty=kwargs['presence_penalty'], model_name=model_obj['id_for_prvdr'])
+        
+    elif model_obj['provider'] == 'ChatOpenAI':
         model = ChatOpenAI()
         message = HumanMessage(params.user_prompt)
         return { 'model_resp': str(model([message])) }
     elif model_obj['provider'] == 'HuggingFaceSpaces':
         local_llm = HuggingFaceSpaces(
             task="summarization",
-            repo_id=model_obj['id'],
+            repo_id=model_obj['id_for_prvdr'],
             model_kwargs=kwargs)
     else:
         raise HTTPException(status_code=404, detail={'msg':f"Model Provider {params['provider']} not available"})
+
+    local_prompt = PromptTemplate(
+            template=local_template,
+            input_variables=['ctxt', 'code', 'user'])
 
     local_chain = local_prompt | local_llm
     resp = local_chain.invoke({'ctxt':params.context, 'code':params.code_snippet, 'user':params.user_prompt})
@@ -271,7 +237,7 @@ async def call_llm(params: LLMParams) -> dict:
     return { 'model_resp': resp }
 
 @app.get("/models/")
-def get_models() -> dict:
+def get_models(current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     global MODELS_FOR_UI
     if MODELS_FOR_UI is None:
         MODELS_FOR_UI = copy_dict_and_remove_keys(MODELS, keys_to_remove)
@@ -279,7 +245,8 @@ def get_models() -> dict:
     return MODELS_FOR_UI
 
 @app.get("/files/{dir_path:path}")
-def get_file(dir_path: str, raw: bool = False, editable: bool = False, request: Request = None):
+def get_file(dir_path: str, raw: bool = False, editable: bool = False, 
+             request: Request = None, ):
     if dir_path.find("..") != -1:
         raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
     

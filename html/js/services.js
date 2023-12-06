@@ -13,10 +13,16 @@ class WebError extends Error {
 }
 
 class FetchAPI {
+  getToken() {
+    let token = sessionStorage.getItem('token');
+    if (token) return "Bearer " + JSON.parse(token).access_token;
+    throw new WebError(401, "Not Authorized to call a service");
+  }
+
   async get(uri, params = {}) {
     const urlObj = new URL(uri, window.location.origin);
     Object.keys(params).forEach(key => urlObj.searchParams.append(key, params[key]));
-    const response = await fetch(urlObj.toString());
+    const response = await fetch(urlObj.toString(), {headers: {"Authorization": this.getToken()}});
     await this.handleResponse(response);
     return await response.json();
   }
@@ -25,7 +31,8 @@ class FetchAPI {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        "Authorization": this.getToken()
       },
       body: JSON.stringify(data)
     });
@@ -37,7 +44,8 @@ class FetchAPI {
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        "Authorization": this.getToken()
       },
       body: JSON.stringify(data)
     });

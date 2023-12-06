@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+
+__version__ = "0.1"
+__author__  = "Shalin Garg"
+
+
 from typing import Any, Dict, List, Mapping, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
@@ -6,6 +12,8 @@ from langchain.llms.utils import enforce_stop_tokens
 from langchain.pydantic_v1 import Extra, root_validator
 from langchain.utils import get_from_dict_or_env
 from gradio_client import Client
+
+__all__ = ["HuggingFaceSpaces"]
 
 DEFAULT_REPO_ID = "gpt2"
 VALID_TASKS = ("text2text-generation", "text-generation", "summarization")
@@ -140,3 +148,7 @@ class HuggingFaceSpaces(LLM):
             # stop tokens when making calls to huggingface_hub.
             text = enforce_stop_tokens(text, stop)
         return text
+
+
+if __name__ == '__main__':
+  print ('Cannot execute as a program, it is a module')

@@ -1,8 +1,10 @@
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
-from langchain.globals import set_llm_cache
-from langchain.cache import InMemoryCache
-from HuggingFaceSpaces import HuggingFaceSpaces
+from langchain.prompts  import PromptTemplate
+from langchain.chains   import LLMChain
+from langchain.globals  import set_llm_cache
+from langchain.cache    import InMemoryCache
+from HuggingFaceSpaces  import HuggingFaceSpaces
+from langchain.llms     import OpenAI
+from langchain.chat_models import ChatOpenAI
 import os
 
 #repo_id="codellama/codellama-playground",

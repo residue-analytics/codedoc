@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <link href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet" id="bootstrap-css">
+    <script src="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+    <script src="//code.jquery.com/jquery-1.11.1.min.js"></script>
+    <link rel="stylesheet" href="css/login.css" />
+</head>
+
+<body>
+    <div class="sidenav">
+        <div class="login-main-text">
+            <h2>Application<br> Login Page</h2>
+            <p>Login or register from here.</p>
+        </div>
+    </div>
+    <div class="main">
+        <div class="col-md-6 col-sm-12">
+            <div class="login-form">
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>User Name</label>
+                        <input name="username" type="text" class="form-control" placeholder="User Name">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input name="password" type="password" class="form-control" placeholder="Password">
+                    </div>
+                    <input name="grant_type" type="hidden" value="password">
+                    <button id="loginBtn" type="submit" class="btn btn-primary">Login</button>
+                    <button type="submit" class="btn btn-secondary" disabled>Register</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script>
+        document.getElementById("loginBtn").addEventListener("click", async (event) => {
+            event.preventDefault();
+            // TODO do something here to show user that form is being submitted
+            let response = await fetch("/token", {
+                method: 'POST',
+                body: new URLSearchParams(new FormData(document.forms['loginForm']))
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            } else {
+                console.log(await response.json()); // or response.text() or whatever the server sends
+            }
+        });
+    </script>
+</body>
+
+</html>

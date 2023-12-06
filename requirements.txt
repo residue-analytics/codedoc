@@ -6,3 +6,6 @@ langserve
 gradio_client
 pydantic
 openai
+python-multipart
+python-jose[cryptography]
+passlib[bcrypt]

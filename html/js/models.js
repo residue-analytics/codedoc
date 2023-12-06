@@ -36,8 +36,8 @@ class ModelKwargs {
     this.topp_nucleus_sampling = topp_nucleus_sampling;
     this.repetition_penalty = repetition_penalty;
     this.presence_penalty = presence_penalty;
-    this.system_prompt = system_prompt || null;
-    this.topk = topk || null;
+    this.system_prompt = system_prompt;
+    this.topk = topk;
   }
 
   toJSON() {
@@ -95,6 +95,7 @@ class LLMParams {
   constructor(llmID = '', temp = 0.0, maxTokens = 0, topp = 0.0, topk = null,
     repeat_penalty = null, presence_penalty = null, sys_prompt = null, context = null,
     code_snippet = null, user_prompt = '') {
+    // console.log(`repeat [${repeat_penalty}] presence [${presence_penalty}]`);
     this.llmID = llmID;
     this.model_kwargs = new ModelKwargs(temp, maxTokens, topp, repeat_penalty, presence_penalty, sys_prompt, topk);
     this.context = context;
