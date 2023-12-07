@@ -500,3 +500,4 @@ venv/
 oldcode/
 newcode/
 *.pem
+*.db

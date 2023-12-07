@@ -8,6 +8,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestFormStri
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
+from .user_db import UserDatabase
 
 # to get a string like this run:
 # openssl rand -hex 32
@@ -15,12 +16,14 @@ SECRET_KEY = "03ce19ebe700afcd4567b4665569f3685339508bfeacd978ae28caa5eba0b787"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+sqllite_dbname = 'codegen_user.db'
+users_db = UserDatabase(sqllite_dbname)
 
 fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
+    "shalin": {
+        "username": "shalin",
+        "fullname": "Shalin Garg",
+        "email": "shalin@example.com",
         "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
         "disabled": False,
     }
@@ -39,7 +42,7 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     email: str | None = None
-    full_name: str | None = None
+    fullname: str | None = None
     disabled: bool | None = None
 
 
@@ -53,7 +56,6 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 router = APIRouter()
 
-
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -63,14 +65,25 @@ def get_password_hash(password):
 
 
 def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+    user = db.get_user_by_username(username)
+    if user:
+        return User(username=username, email=user.email, fullname=user.fullname, disabled=user.disabled)
+    return None
 
+def get_credentials(db, username:str):
+    credentials = db.get_user_credentials(username)
+    if credentials:
+        # Now get the user details and then merge them in one object
+        user = db.get_user_by_id(credentials.user_id)
+        return UserInDB(username=username, email=user.email, fullname=user.fullname, 
+                        disabled=user.disabled, hashed_password=credentials.password)
+    return None
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+def authenticate_user(db, username: str, password: str):
+    user = get_credentials(db, username)
     if not user:
+        return False
+    if user.disabled:
         return False
     if not verify_password(password, user.hashed_password):
         return False
@@ -102,7 +115,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(users_db, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -118,10 +131,8 @@ async def get_current_active_user(
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
-    response: Response
-):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()]):
+    user = authenticate_user(users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
