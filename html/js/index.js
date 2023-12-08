@@ -1,5 +1,5 @@
 import { Model, ModelKwargs, LLMParams, ModelList } from "./models.js";
-import { WebError, ModelService, FilesService, LLMService } from "./services.js";
+import { WebError, ModelService, FilesService, LLMService, LLMParamsService, LoginService } from "./services.js";
 import { VanillaEditor, AceEditor } from "./editors.js";
 import { UIUtils } from "./utils.js";
 
@@ -36,7 +36,7 @@ class LLMParamUIPair {
   }
 
   getValue() {
-    console.log(`Elem [${this.elemID}] Value[${this.elem.value}]`);
+    //console.log(`Elem [${this.elemID}] Value[${this.elem.value}]`);
     return this.elem.value;
   }
 
@@ -168,6 +168,7 @@ class Globals {
   constructor() {
     this.readOnlyEditor = null;
     this.editor = null;
+    this.outputEditor = null;
     this.llmSelector = null;
     this.models = null;
     this.llmParamsUI = new LLMParamsUI();
@@ -189,6 +190,10 @@ class Globals {
     });
   }
 
+  setModelOutputEditor(editorID) {
+    this.outputEditor = new AceEditor(editorID);
+  }
+
   setLLModels(selectorID) {
     new ModelService().getModels().then((models) => {
       this.models = models;
@@ -196,8 +201,27 @@ class Globals {
         return { value: model.code, text: `${model.name} (${model.code})` }
       });
 
+      dropdownOpts.splice(0, 0, {value:"None", text:"None"});
       UIUtils.updSelectDropdown(selectorID, dropdownOpts);
     });
+  }
+
+  setSysPromptList(nodeID) {
+
+  }
+
+  loadReadOnlyEditor() {
+    // Populate the input directory tree in the read only editor
+    try {
+      new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
+    } catch (err) {
+      console.log(err);
+    }
+  }
+
+  loadDataOnMain() {
+    this.loadReadOnlyEditor();
+    this.setLLModels("ModelSelector");
   }
 
   getToken() {
@@ -210,29 +234,35 @@ class Globals {
     sessionStorage.setItem('token', JSON.stringify(tokenJSON));
   }
 
-  clearToken() {
-    sessionStorage.removeItem('token');
+  clearStorage() {
+    sessionStorage.clear();
   }
 
   saveLLMParams() {
     let params = this.llmParamsUI.getLLMParams();
     params.context = "";       // We are not going to save context
     params.code_snippet = "";  //   and code snippet
-    sessionStorage.setItem(params.llmID, JSON.stringify(params.toJSON()));
-    console.log(`Saved Param for [${params.llmID}]`);
-  }
-
-  getSavedLLMParams(modelID) {
-    let item = sessionStorage.getItem(modelID);
-    if (item) {
-      console.log(`Found saved params for [${modelID}]`);
-      return LLMParams.fromJSON(JSON.parse(item));
+    let oldParams = sessionStorage.getItem(params.llmID);
+    let newParams = JSON.stringify(params.toJSON());
+    if (oldParams != newParams) {
+      sessionStorage.setItem(params.llmID, newParams);
+      new LLMParamsService().saveParams(params).then(resp => {
+          UIUtils.showAlert("erroralert", `Saved [${resp.llmID}] with count [${resp.count}] on server`);
+      });
+      console.log(`Saved Param for [${params.llmID}]`);
     }
-
-    return null;
   }
 
-  restoreLLMParamsFromSession(modelCode=null) {
+  async getSavedLLMParams(modelID) {
+    let item = sessionStorage.getItem(modelID);  // Get the latest one from session storage
+    if (item) {
+      return LLMParams.fromJSON(JSON.parse(item));
+    } else {
+      return await new LLMParamsService().getParams(modelID)
+    }
+  }
+
+  async restoreLLMParamsFromSession(modelCode=null) {
     let params = null;
 
     if (!modelCode) {
@@ -240,7 +270,16 @@ class Globals {
     }
 
     let model = globals.models.findByCode(modelCode);
-    params = this.getSavedLLMParams(model.id);
+    if (!model) {
+      UIUtils.showAlert('erroralert', `Model [${modelCode}] not found.`);
+      return;
+    }
+
+    try {
+      params = await this.getSavedLLMParams(model.id);
+    } catch (err) {
+    }
+    
     if (params) {
       this.llmParamsUI.updateLLMParams(params);
     } else {
@@ -249,18 +288,26 @@ class Globals {
   }
 }
 
-function showOneDiv(divID) {
-  // Manages the "Logout", "LoginDiv", "MainDiv"
-  if (divID == "LoginDiv") {
-    // We have just logged out, show and hide appropriate divs
-    document.getElementById("LoginDiv").classList.remove("visually-hidden");
-    document.getElementById("MainDiv").classList.add("visually-hidden");
-    document.getElementById("Logout").parentElement.classList.add("visually-hidden");
-  } else if (divID == "MainDiv") {
-    document.getElementById("LoginDiv").classList.add("visually-hidden");
-    document.getElementById("MainDiv").classList.remove("visually-hidden");
-    document.getElementById("Logout").parentElement.classList.remove("visually-hidden");
-  }
+function showLogin() {
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+
+  document.getElementById("LoginDiv").classList.remove("visually-hidden");
+  document.getElementById("Logout").parentElement.classList.add("visually-hidden");
+
+  document.getElementById("MainDiv").classList.add("visually-hidden");
+}
+
+function showMainContent() {
+  document.getElementById("username").value = "";
+  document.getElementById("password").value = "";
+
+  document.getElementById("LoginDiv").classList.add("visually-hidden");
+  document.getElementById("Logout").parentElement.classList.remove("visually-hidden");
+
+  document.getElementById("MainDiv").classList.remove("visually-hidden");
+
+  globals.loadDataOnMain();
 }
 
 const globals = new Globals();
@@ -279,27 +326,26 @@ const globals = new Globals();
   globals.llmParamsUI.prspenLLMParam = new LLMParamUIPair('PresencePenaltyBtn', 'PresencePenaltyInput', 'range');
   globals.llmParamsUI.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', 'number', true, true);
 
-  document.getElementById("Logout").addEventListener("click", () => {
-    globals.clearToken();
-    showOneDiv("LoginDiv");
+  document.getElementById("Logout").addEventListener("click", async () => {
+    globals.clearStorage();
+    await new LoginService().logout();
+    showLogin();
   });
 
   document.getElementById("loginBtn").addEventListener("click", async (event) => {
     event.preventDefault();
     // TODO do something here to show user that form is being submitted
-    let response = await fetch("/token", {
-        method: 'POST',
-        body: new URLSearchParams(new FormData(document.forms['loginForm']))
-    });
-    document.getElementById("password").value = "";
-    if (!response.ok) {
+    let response = null;
+    try {
+      response = await new LoginService().login(new FormData(document.forms['loginForm']));
+      //globals.saveToken(await response.json());
+      showMainContent();
+    } catch(err) {
+      document.getElementById("password").value = "";
       UIUtils.showAlert('erroralert', `HTTP error! Status: ${response.status}`);
-    } else {
-        globals.saveToken(await response.json());
-        showOneDiv("MainDiv");
     }
   });
-  
+
   document.getElementById('SaveParams').addEventListener('click', function () {
     globals.saveLLMParams();
   });
@@ -330,15 +376,18 @@ const globals = new Globals();
   document.getElementById('SendToLLM').addEventListener('click', function () {
     let params = globals.llmParamsUI.getLLMParams();
     
-    document.getElementById('ModelOutput').value = "";
+    globals.outputEditor.setText("");
+    //document.getElementById('ModelOutput').value = "";
     UIUtils.addSpinnerToIconButton('SendToLLM');
     new LLMService().callLLM(params)
     .then( resp => {
       UIUtils.rmSpinnerFromIconButton('SendToLLM');
-      document.getElementById('ModelOutput').value = resp;
+      globals.outputEditor.setText(resp);
+      //document.getElementById('ModelOutput').value = resp;
     }).catch( err => {
       UIUtils.rmSpinnerFromIconButton('SendToLLM');
-      document.getElementById('ModelOutput').value = err;
+      globals.outputEditor.setText(err);
+      //document.getElementById('ModelOutput').value = err;
     });
   });
   
@@ -346,15 +395,18 @@ const globals = new Globals();
     let params = globals.llmParamsUI.getLLMParams();
     params.code_snippet = globals.editor.getCode();
     
-    document.getElementById('ModelOutput').value = "";
+    globals.outputEditor.setText("");
+    //document.getElementById('ModelOutput').value = "";
     UIUtils.addSpinnerToIconButton('SendFileToLLM');
     new LLMService().callLLM(params)
     .then( resp => {
       UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-      document.getElementById('ModelOutput').value = resp;
+      globals.outputEditor.setText(resp);
+      //document.getElementById('ModelOutput').value = resp;
     }).catch( err => {
       UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-      document.getElementById('ModelOutput').value = err;
+      globals.outputEditor.setText(err);
+      //document.getElementById('ModelOutput').value = err;
     });
   });
 
@@ -365,30 +417,69 @@ const globals = new Globals();
       UIUtils.showAlert("erroralert", "Nothing to send, no Code Selected in the Editor");
       return;
     }
-
-    document.getElementById('ModelOutput').value = "";
+    globals.outputEditor.setText("");
+    //document.getElementById('ModelOutput').value = "";
     UIUtils.addSpinnerToIconButton('SendSelectionToLLM');
     new LLMService().callLLM(params)
     .then( resp => {
       UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-      document.getElementById('ModelOutput').value = resp;
+      globals.outputEditor.setText(resp);
+      //document.getElementById('ModelOutput').value = resp;
     }).catch( err => {
       UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-      document.getElementById('ModelOutput').value = err;
+      globals.outputEditor.setText(err);
+      //document.getElementById('ModelOutput').value = err;
     });
   });
 
-  window.addEventListener("load", (event) => {
+  document.getElementById("PromptsListModal").addEventListener('show.bs.modal', async (event) => {
+    const modal = event.target;
+    const button = event.relatedTarget;
+    const type = button.getAttribute("data-bs-prompt");
+    
+    modal.querySelector('.modal-title').textContent = `All saved ${type} Prompts`
+
+    const modalBody = modal.querySelector('.modal-body');
+
+    try {
+      const prompt_set = new Set();
+      (await new LLMParamsService().getAllParams()).forEach(param => {
+        if (type == "System") {
+          prompt_set.add(param.model_kwargs.system_prompt);
+        } else if (type == "User") {
+          prompt_set.add(param.user_prompt);
+        }
+      });
+
+      if (prompt_set.size == 0) {
+        modalBody.innerHTML = "<h1> No Params Saved </h1>";
+      } else {
+        let allPrompts = "<ol>";
+        prompt_set.forEach(prompt => {
+          allPrompts += `<li> ${prompt} </li>`;
+        });
+        allPrompts += "</ol>";
+        modalBody.innerHTML = allPrompts;
+      }
+    } catch(err) {
+      console.log(err);
+    }
+  });
+
+  window.addEventListener("load", async (event) => {
     //console.log("page is fully loaded");
     globals.setEditor("editor2");
     globals.setReadOnlyEditor("editor1");
-    globals.setLLModels("ModelSelector");
+    globals.setModelOutputEditor("ModelOutput");
 
-    // Populate the input directory tree in the read only editor
     try {
-      new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
+      if (await new LoginService().isSessionValid()) {
+        showMainContent();
+      } else {
+        showLogin();
+      }
     } catch (err) {
-      console.log(err);
+      showLogin();
     }
   });
 

@@ -1,4 +1,4 @@
-import { Model, ModelList, CodeFile } from "./models.js";
+import { Model, ModelList, CodeFile, LLMParams } from "./models.js";
 
 class WebError extends Error {
 
@@ -13,16 +13,17 @@ class WebError extends Error {
 }
 
 class FetchAPI {
-  getToken() {
-    let token = sessionStorage.getItem('token');
-    if (token) return "Bearer " + JSON.parse(token).access_token;
-    throw new WebError(401, "Not Authorized to call a service");
-  }
+  //getToken() {
+  //  return "";
+  //  let token = sessionStorage.getItem('token');
+  //  if (token) return "Bearer " + JSON.parse(token).access_token;
+  //  throw new WebError(401, "Not Authorized to call a service");
+  //}
 
   async get(uri, params = {}) {
     const urlObj = new URL(uri, window.location.origin);
     Object.keys(params).forEach(key => urlObj.searchParams.append(key, params[key]));
-    const response = await fetch(urlObj.toString(), {headers: {"Authorization": this.getToken()}});
+    const response = await fetch(urlObj.toString());
     await this.handleResponse(response);
     return await response.json();
   }
@@ -31,8 +32,7 @@ class FetchAPI {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        "Authorization": this.getToken()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     });
@@ -44,8 +44,7 @@ class FetchAPI {
     const response = await fetch(url, {
       method: 'PUT',
       headers: {
-        'Content-Type': 'application/json',
-        "Authorization": this.getToken()
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
     });
@@ -102,7 +101,6 @@ class ModelService {
   async getModels() {
     // Return a ModelList object
     const response = await new FetchAPI().get('/models/');
-    console.log(response);
     return new ModelList(Object.keys(response).map(id => Model.fromJSON({ 'id': id, ...response[id] })));
   }
 }
@@ -113,7 +111,7 @@ class FilesService {
 
   async getFiles(dirName = null, editable = false) {
     const response = await new FetchAPI().get('/files/' + (dirName ? dirName : ""), { 'editable': editable });
-    if ((dirName && response.dirname == dirName) || (dirName == null && response.dirname == "")) {
+    if ((dirName && response.dirname == dirName) || (dirName == null && response.dirname == "/")) {
       return response.files;
     } else {
       throw new Error(`Unable to fetch Directory Listing for [${dirName}]`);
@@ -143,10 +141,49 @@ class FilesService {
 
     const response = await new FetchAPI().put('/files/' + codeFile.name, codeFile.toJSON());
     if (response.name && response.version) {
-      return CodeFile.fromJSON(response);  // This response does not have the "file.content"
+      return CodeFile.fromJSON(response);  // This response should not have the "file.content"
     } else {
       console.log(`Incomplete Save File response [${JSON.stringify(response)}]`);
       throw new Error("Unable to save successfully, see console");
+    }
+  }
+}
+
+class LLMParamsService {
+  constructor() {
+  }
+
+  async getAllParams() {
+    const response = await new FetchAPI().get('/params/');
+    if (response.param_list) {
+      return response.param_list.map(param => LLMParams.fromJSON(param));
+    } else {
+      console.log(response);
+      throw new Error('Unable to fetch all params');
+    }
+  }
+
+  async getParams(llmID) {
+    const response = await new FetchAPI().get('/params/' + llmID);
+    if (response.llmID && response.llmID == llmID) {
+      return LLMParams.fromJSON(response);
+    } else {
+      console.log(response);
+      throw new Error(`Unable to fetch Params for [${llmID}]`);
+    }
+  }
+
+  async saveParams(params) {
+    if (!params) {
+      throw new Error(`Cannot save null LLMParams.`);
+    }
+
+    const response = await new FetchAPI().put('/params/' +params.llmID, params.toJSON());
+    if (response.llmID && response.count) {
+      return response;
+    } else {
+      console.log(`Incomplete Save Params response [${JSON.stringify(response)}]`);
+      throw new Error("Unable to save params successfully, see console");
     }
   }
 }
@@ -165,4 +202,34 @@ class LLMService {
   }
 }
 
-export { WebError, ModelService, FilesService, LLMService }
+class LoginService {
+  constructor() {
+  }
+
+  async login(formData) {
+    let response = await fetch("/token", {
+      method: 'POST',
+      body: new URLSearchParams(formData)
+    });
+    if (response.ok) {
+      return await response.json();
+    } else {
+      throw new WebError(response.status, await response.text());
+    }
+  }
+
+  async logout() {
+    await fetch("/logout");
+  }
+
+  async isSessionValid() {
+    try {
+      await new ModelService().getModels();
+    } catch (err) {
+      return false;
+    }
+    return true;
+  }
+}
+
+export { WebError, ModelService, FilesService, LLMService, LLMParamsService, LoginService }

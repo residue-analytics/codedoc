@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 
-from datetime import datetime, timedelta
+__version__ = "0.1"
+__author__  = "Shalin Garg"
+
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 from fastapi import Depends, APIRouter, HTTPException, status, Response
@@ -10,14 +13,22 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from .user_db import UserDatabase
 
+from typing import cast, Any
+from fastapi.security import OAuth2
+from fastapi.openapi.models import OAuthFlows as OAuthFlowsModel
+from fastapi import Request, Cookie
+from fastapi.security.utils import get_authorization_scheme_param
+from typing import Optional
+from typing import Dict
+
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = "03ce19ebe700afcd4567b4665569f3685339508bfeacd978ae28caa5eba0b787"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-sqllite_dbname = 'codegen_user.db'
-users_db = UserDatabase(sqllite_dbname)
+sqlite_dbname = 'codegen_user.db'
+users_db = UserDatabase(sqlite_dbname)
 
 fake_users_db = {
     "shalin": {
@@ -29,6 +40,38 @@ fake_users_db = {
     }
 }
 
+
+class OAuth2PasswordBearerWithCookie(OAuth2):
+    def __init__(
+        self,
+        tokenUrl: str,
+        scheme_name: Optional[str] = None,
+        scopes: Optional[Dict[str, str]] = None,
+        auto_error: bool = True,
+    ):
+        if not scopes:
+            scopes = {}
+        flows = OAuthFlowsModel(
+            password=cast(Any, {"tokenUrl": tokenUrl, "scopes": scopes})
+        )
+        super().__init__(flows=flows, scheme_name=scheme_name, auto_error=auto_error)
+
+    async def __call__(self, request: Request) -> Optional[str]:
+        authorization: str = request.cookies.get("session_id")  #changed to accept access token from httpOnly Cookie
+        #print("access_token is", authorization)
+
+        #scheme, param = get_authorization_scheme_param(authorization)
+        #if not authorization or scheme.lower() != "bearer":
+        if not authorization:
+            if self.auto_error:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Not authenticated",
+                    headers={"WWW-Authenticate": "Bearer"},
+                )
+            else:
+                return None
+        return authorization
 
 class Token(BaseModel):
     access_token: str
@@ -52,7 +95,8 @@ class UserInDB(User):
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+#oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearerWithCookie(tokenUrl="token")
 
 router = APIRouter()
 
@@ -131,7 +175,8 @@ async def get_current_active_user(
 
 @router.post("/token", response_model=Token)
 async def login_for_access_token(
-    form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()]):
+    form_data: Annotated[OAuth2PasswordRequestFormStrict, Depends()],
+    response: Response):
     user = authenticate_user(users_db, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -143,8 +188,16 @@ async def login_for_access_token(
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
 
+    response.set_cookie(key="session_id", value=access_token, 
+                        expires=datetime.now(timezone.utc) + access_token_expires, secure=False, httponly=True)
+    return Token(access_token=access_token, token_type="bearer")
+
+@router.get("/logout")
+async def logout(response: Response):
+    response.set_cookie(key="session_id", value="", 
+                        expires=datetime.now(timezone.utc), secure=False, httponly=True)
+    return {"result": "success"}
 
 @router.get("/users/me/", response_model=User)
 async def read_users_me(

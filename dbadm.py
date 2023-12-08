@@ -29,11 +29,12 @@ if args.debug:
 else:
   logging.getLogger().setLevel(logging.INFO)
 
-db_file = auth.sqllite_dbname
+db_file = auth.sqlite_dbname
 if args.db:
   db_file = args.db
 
 users_db = UserDatabase(db_file)
+params_db = ParamsDatabase(db_file)
 #pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def command(args=None):
@@ -167,6 +168,15 @@ def all_users():
   for credentials in users_db.fetch_all_user_credentials():
     print(credentials.toJSON())
 
+def show_params():
+  username = input("Username: ")
+  params = params_db.get_params_by_username(username)
+  if not params:
+    print("No Data Found")
+  else:
+    for param in params:
+      print(param.toJSON())
+
 def create_login():
   username, secret = login_pass()
   secret = auth.get_password_hash(secret)
@@ -192,6 +202,7 @@ func_list = {
     "usrprf"     : usr_prof,      # View User's Profile
     "prfdel"     : delete_profile,# Delete a profile by ID, email or Username
     "all"        : all_users,     # Print all Users and Usernames    
+    "params"     : show_params,
     "help"       : help,
     "quit"       : quit
   }

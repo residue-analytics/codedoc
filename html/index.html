@@ -27,6 +27,7 @@
 </head>
 
 <body class="d-flex flex-column min-vh-100">
+
   <header class="navbar navbar-expand-md navbar-dark bg-primary">
     <nav class="container-xxl flex-wrap flex-md-nowrap" aria-label="Primary Navigation">
       <a class="navbar-brand" href="#home">Home</a>
@@ -90,7 +91,7 @@
               <input id="username" name="username" type="text" class="form-control" placeholder="User Name">
             </div>
             <div class="mb-3">
-              <label for="username" class="form-label">Password</label>
+              <label for="password" class="form-label">Password</label>
               <input id="password" name="password" type="password" class="form-control" placeholder="Password">
             </div>
             <input name="grant_type" type="hidden" value="password">
@@ -101,11 +102,11 @@
       </div>
     </div>
     <div id="MainDiv" class="container visually-hidden">
-      <div class="row justify-content-left align-items-center mb-3" style="height: 400px">
-        <div id="editor1" class="col-6">
+      <div class="row justify-content-left align-items-center mb-3" >
+        <div id="editor1" class="col-lg-6 mb-3">
         </div>
 
-        <div class="col-6" style="height:100%;">
+        <div class="col-lg-6 mb-3" style="height: 400px">
           <div id="editor2" class="rounded" style="height:100%;">
 function foo(items) {
   var x = "All this is syntax highlighted";
@@ -167,7 +168,7 @@ function foo(items) {
       </div>
 
       <div class="row align-items-top mb-3">
-        <div class="col-6">
+        <div class="col-lg-6 mb-3">
           <form>
             <div class="mb-3">
               <label for="ModelSelector" class="form-label">Chat with LLM</label>
@@ -182,7 +183,9 @@ function foo(items) {
               </div>
             </div>
             <div class="mb-3 visually-hidden">
-              <label for="SysPromptInput" class="form-label">System Prompt</label>
+              <label for="SysPromptInput" class="form-label">System Prompt 
+                <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal" data-bs-prompt="System"></a>
+              </label>
               <textarea id="SysPromptInput" class="form-control" rows="6" placeholder="System Prompt"></textarea>
               <div class="form-text">
                 The system prompt helps set the behavior of the LLM/assistant. If properly crafted, the system message 
@@ -200,7 +203,9 @@ function foo(items) {
               </div>
             </div>
             <div class="mb-3 visually-hidden">
-              <label for="UsrPromptInput" class="form-label">User Prompt</label>
+              <label for="UsrPromptInput" class="form-label">User Prompt
+                <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"  data-bs-prompt="User"></a>
+              </label>
               <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
               <div class="form-text">
                 The user prompt poses the current task or question for the LLM.
@@ -273,17 +278,32 @@ function foo(items) {
             </div>
           </form>
         </div>
-        <div class="col-6">
-          <form>
+        <div class="col-lg-6 mb-3" style="height: 400px">
+          <div id="ModelOutput" class="rounded" style="height:100%;">
+LLM Output comes here, when you use the "Send **" buttons!!
+          </div>
+          <!-- <form>
             <label for="ModelOutput" class="form-label">LLM Response</label>
             <textarea id="ModelOutput" class="form-control" rows="12"></textarea>
-            <!--button id="evalinput" type="button" class="btn btn-primary"-->
-          </form>
+          </form> -->
         </div>
       </div>
     </div>
   </div>
 
+  <div id="PromptsListModal" tabindex="-1" class="modal fade">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h1 class="modal-title fs-5">Saved Prompts List</h1>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          ...
+        </div>
+      </div>
+    </div>
+  </div>
 
   <footer>
     <div class="social text-center pb-3">

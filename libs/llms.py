@@ -3,7 +3,6 @@
 __version__ = "0.1"
 __author__  = "Shalin Garg"
 
-
 from typing import Any, Dict, List, Mapping, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun

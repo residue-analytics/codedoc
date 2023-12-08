@@ -191,6 +191,10 @@ class AceEditor {
     }
   }
 
+  setText(content) {
+    this.editor.session.setValue(content);
+  }
+  
   getCode() {
     return this.editor.session.getValue();
   }

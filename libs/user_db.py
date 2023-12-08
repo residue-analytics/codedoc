@@ -1,7 +1,12 @@
-import sqlite3 
-#import hashlib
+#!/usr/bin/env python
 
-__all__ = ['User', 'UserCredentials', 'UserDatabase']
+__version__ = "0.1"
+__author__  = "Shalin Garg"
+
+import sqlite3 
+import hashlib
+
+__all__ = ['User', 'UserCredentials', 'UserDatabase', 'ParamsDatabase']
 
 class User: 
     def __init__(self, id, email, fullname, disabled=False): 
@@ -22,8 +27,20 @@ class UserCredentials:
     def toJSON(self):
         return f"User ID [{self.user_id}] Username [{self.username}] Pass [{self.password}]"
 
+class LLMParams:
+    def __init__(self, name, user_id, timestamp, data):
+        self.timestamp = timestamp
+        self.name = name
+        self.user_id = user_id
+        self.type = 'llm_params'
+        self.data = data
+
+    def toJSON(self):
+        return f"llmID [{self.name}] Type [{self.type}] User [{self.user_id}] TS [{self.timestamp}] Data [{self.data}]"
+
 class UserDatabase: 
     def __init__(self, db_name): 
+        self.db_name = db_name
         self.conn = sqlite3.connect(db_name) 
         self.cursor = self.conn.cursor() 
         self.create_tables()
@@ -81,11 +98,13 @@ class UserDatabase:
         return None
 
     def get_user_by_username(self, username):
-        self.cursor.execute('SELECT users.* FROM users INNER JOIN user_credentials ON users.id = user_credentials.user_id WHERE user_credentials.username = ?', (username,))
-        row = self.cursor.fetchone()
-        if row:
-            id, email, fullname, disabled = row
-            return User(id, email, fullname, bool(disabled))
+        user_id = self.get_user_id_by_username(username)
+        if user_id:
+            self.cursor.execute('SELECT * FROM users WHERE users.id = ?', (user_id,))
+            row = self.cursor.fetchone()
+            if row:
+                id, email, fullname, disabled = row
+                return User(id, email, fullname, bool(disabled))
         return None
 
     def get_user_credentials_by_userid(self, user_id):
@@ -102,6 +121,14 @@ class UserDatabase:
         if row:
             user_id, username, password = row
             return UserCredentials(user_id, username, password)
+        return None
+
+    def get_user_id_by_username(self, username):
+        self.cursor.execute('SELECT * FROM user_credentials WHERE username = ?', (username,))
+        row = self.cursor.fetchone()
+        if row:
+            user_id, username, password = row
+            return user_id
         return None
 
     def update_user(self, user):
@@ -140,3 +167,115 @@ class UserDatabase:
 
 #    def verify_password(self, password, hashed_password):
 #        return hashed_password == self.hash_password(password)
+
+class ParamsDatabase:
+    def __init__(self, db_name): 
+        self.db_name = db_name
+        self.conn = sqlite3.connect(db_name) 
+        self.cursor = self.conn.cursor() 
+        self.create_tables()
+    
+    def create_tables(self):
+        self.cursor.execute('''
+            CREATE TABLE IF NOT EXISTS params (
+                tm INTEGER PRIMARY KEY,
+                type TEXT,
+                user_id INTEGER,
+                name TEXT,
+                data TEXT,
+                hash TEXT,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+            )
+        ''')
+
+        self.cursor.execute('''
+            CREATE UNIQUE INDEX IF NOT EXISTS hash_idx ON params (
+                user_id, hash
+            )
+        ''')
+        self.conn.commit()
+
+    def check_tables_exist(self):
+        self.cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='params'")
+        params_table = self.cursor.fetchone()
+        return params_table
+
+    def check_hash_exists(self, user_id, hash_data):
+        # Except user_id all other distinctive props are within the hashed JSON data
+        self.cursor.execute("SELECT tm FROM params WHERE user_id = ? AND hash = ?", (user_id, hash_data))
+        row = self.cursor.fetchone()
+        if row:
+            return True
+        else:
+            return False
+
+    def add_params(self, params):
+        hash_data = self.hash_data(params.data)
+        if not self.check_hash_exists(params.user_id, hash_data):
+            self.cursor.execute("INSERT INTO params ('tm', 'type', 'user_id', 'name', 'data', 'hash') VALUES (?, ?, ?, ?, ?, ?)", 
+                            (params.timestamp, params.type, params.user_id, params.name, 
+                             params.data, hash_data))
+            self.conn.commit()
+
+    def add_params_by_username(self, params, username):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        if user_id:
+            params.user_id = user_id
+            self.add_params(params)
+        else:
+            raise ValueError(f"No user found with name [{username}]")
+
+    def get_params_by_username(self, username):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        if user_id:
+            return self.get_params_by_userid(user_id)
+        
+        return None
+
+    def get_latest_by_name_username(self, name, username):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        if user_id:
+            self.cursor.execute('SELECT * FROM params WHERE user_id = ? AND name = ? ORDER BY tm DESC LIMIT 1', (user_id, name))
+            row = self.cursor.fetchone()
+            if row:
+                tm, type, user_id, name, data, hash = row
+                if type == "llm_params":
+                    return LLMParams(name, user_id, tm, data)
+        return None
+                
+    def get_params_by_userid(self, user_id):
+        self.cursor.execute('SELECT * FROM params WHERE user_id = ?', (user_id,))
+        rows = self.cursor.fetchall()
+        param_list = []
+        for row in rows:
+            tm, type, user_id, name, data, hash = row
+            if type == "llm_params":
+                param_list.append(LLMParams(name, user_id, tm, data))
+        
+        if len(param_list) > 0:
+            return param_list
+        
+        return None
+
+    def get_count_by_name(self, username, name):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        if user_id:
+            self.cursor.execute('select count(*) from params where user_id = ? AND name = ?', (user_id, name))
+            row = self.cursor.fetchone()
+            return row[0]
+        return 0
+        
+    def delete_param(self, tm, user_id):
+        self.cursor.execute('DELETE FROM params WHERE tm = ? AND user_id = ?', (tm, user_id))
+        self.conn.commit()
+
+    def delete_all_params(self, user_id):
+        self.cursor.execute('DELETE FROM params WHERE user_id = ?', (user_id))
+        self.conn.commit()
+
+    def hash_data(self, data:str):
+        return hashlib.sha256(data.encode()).hexdigest()

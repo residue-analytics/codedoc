@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+
+__version__ = "0.1"
+__author__  = "Shalin Garg"
+
 from typing import List
 from typing import Annotated
 
@@ -18,14 +22,18 @@ from langchain.llms      import OpenAI
 from langchain.chains    import LLMChain
 from langserve           import add_routes
 from pathlib             import Path
+from datetime            import datetime
 from sys                 import exit
 import ssl
 import os
 import copy
+import json
 from libs.data           import *
 from libs.llms           import HuggingFaceSpaces
 from libs                import auth
-from libs.auth           import get_current_active_user, User
+from libs                import user_db
+from libs.auth           import get_current_active_user, User, sqlite_dbname
+from libs.user_db        import ParamsDatabase
 
 
 INPUT_CODE_DIR = "./oldcode"
@@ -182,7 +190,8 @@ add_routes(
 )
 
 @app.post("/llm/")
-async def call_llm(params: LLMParams) -> dict:
+async def call_llm(params: LLMParams,
+                   current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     # initialize Spaces LLM
     model_obj = MODELS.get(params.llmID)
     if model_obj is None:
@@ -244,10 +253,32 @@ def get_models(current_user: Annotated[User, Depends(get_current_active_user)]) 
 
     return MODELS_FOR_UI
 
-@app.get("/files/{dir_path:path}")
-def get_file(dir_path: str, raw: bool = False, editable: bool = False, 
-             request: Request = None, ):
-    if dir_path.find("..") != -1:
+@app.get("/files/")
+def get_dirlist(current_user: Annotated[User, Depends(get_current_active_user)],
+                editable: bool = False) -> dict:
+    basedir  = None
+    if editable:
+        basedir = OUTPUT_CODE_DIR
+    else:
+        basedir = INPUT_CODE_DIR
+
+    filepath = Path(basedir + "/")
+    if filepath.is_dir():
+        files_paths = []
+        for file in filepath.glob("**/*"):
+            if not (file.name.startswith('_') or file.name.startswith('.')):
+                if not file.is_dir():
+                    files_paths.append(file.relative_to(basedir).as_posix())
+        # files = os.listdir("./" + dir_path)
+        #files_paths = sorted([f"{request.url._url}/{f}" for f in files if not (f.startswith('.') or f.startswith('_'))])
+        return {'dirname': "/", 'files': files_paths}
+    else:
+        raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
+
+@app.get("/files/{file_path:path}")
+def get_file(file_path: str, current_user: Annotated[User, Depends(get_current_active_user)],
+             raw: bool = False, editable: bool = False):
+    if file_path.find("..") != -1:
         raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
     
     basedir  = None
@@ -258,22 +289,13 @@ def get_file(dir_path: str, raw: bool = False, editable: bool = False,
     else:
         basedir = INPUT_CODE_DIR
 
-    filepath = Path(basedir + "/" + dir_path)
+    filepath = Path(basedir + "/" + file_path)
 
     if filepath.is_file():
         if raw:
             return FileResponse(str(filepath))    # FastAPI to return proper content headers
         else:
-            return File(name=dir_path, content=filepath.read_text())
-    elif filepath.is_dir():
-        files_paths = []
-        for file in filepath.glob("**/*"):
-            if not (file.name.startswith('_') or file.name.startswith('.')):
-                if not file.is_dir():
-                    files_paths.append(file.relative_to(basedir).as_posix())
-        # files = os.listdir("./" + dir_path)
-        #files_paths = sorted([f"{request.url._url}/{f}" for f in files if not (f.startswith('.') or f.startswith('_'))])
-        return {'dirname': dir_path, 'files': files_paths}
+            return File(name=file_path, content=filepath.read_text())
     elif findVersionedFile:
         # Try to find the versioned files
         most_recent_file = get_editable_file(filepath)
@@ -305,7 +327,8 @@ def get_version(file_path):
         return 0
 
 @app.put("/files/{dir_path:path}")
-def save_file(dir_path: str, fileData: File, request: Request) -> File:
+def save_file(dir_path: str, fileData: File, request: Request,
+              current_user: Annotated[User, Depends(get_current_active_user)]) -> File:
     if dir_path.find("..") != -1 or fileData.name.find("..") != -1:
         raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
 
@@ -365,6 +388,34 @@ def save_file(dir_path: str, fileData: File, request: Request) -> File:
     fileData.version = newVer
     fileData.content = None
     return fileData
+
+@app.get("/params/")
+def get_all_params(current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
+    params_db = ParamsDatabase(sqlite_dbname)
+    db_params = params_db.get_params_by_username(current_user.username)
+    if db_params:
+        params_list = []
+        for param in db_params:
+            params_list.append(json.loads(param.data))
+        return { 'param_list': params_list }
+    raise HTTPException(status_code=404, detail={'msg':f"Params not available"})
+
+@app.get("/params/{llmID}")
+def get_params(llmID:str, current_user: Annotated[User, Depends(get_current_active_user)]) -> LLMParams:
+    params_db = ParamsDatabase(sqlite_dbname)
+    db_params = params_db.get_latest_by_name_username(llmID, current_user.username)
+    if db_params:
+        return  json.loads(db_params.data)
+    raise HTTPException(status_code=404, detail={'msg':f"Params for Model ID [{llmID}] not available"})
+
+@app.put("/params/{llmID}")
+def save_params(llmID: str, params: LLMParams, 
+              current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
+    params_db = ParamsDatabase(sqlite_dbname)
+    params_db.add_params_by_username(user_db.LLMParams(llmID, None, int(datetime.now().timestamp()), 
+                                                       params.model_dump_json()), current_user.username)
+    count = params_db.get_count_by_name(current_user.username, llmID)
+    return {'llmID': llmID, 'count': count }
 
 def checkEnviron():
     res = True
