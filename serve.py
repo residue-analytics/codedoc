@@ -33,7 +33,7 @@ from libs.llms           import HuggingFaceSpaces
 from libs                import auth
 from libs                import user_db
 from libs.auth           import get_current_active_user, User, sqlite_dbname
-from libs.user_db        import ParamsDatabase
+from libs.user_db        import UserDatabase, ParamsDatabase
 
 
 INPUT_CODE_DIR = "./oldcode"
@@ -164,7 +164,7 @@ app = FastAPI(
 )
 
 # To serve static files from /html directory
-app.mount("/html", StaticFiles(directory="./html", html=True), name="html")
+app.mount("/html", StaticFiles(directory="./html/staging", html=True), name="html")
 app.include_router(auth.router)
 
 user_template = """{user_prompt}."""
@@ -291,7 +291,7 @@ def get_file(file_path: str, current_user: Annotated[User, Depends(get_current_a
 
     filepath = Path(basedir + "/" + file_path)
 
-    if filepath.is_file():
+    if filepath.is_file():   # We don't have un-versioned files in output directory
         if raw:
             return FileResponse(str(filepath))    # FastAPI to return proper content headers
         else:
@@ -389,6 +389,22 @@ def save_file(dir_path: str, fileData: File, request: Request,
     fileData.content = None
     return fileData
 
+@app.get("/params-history/")
+def get_all_params_history(current_user: Annotated[User, Depends(get_current_active_user)]) -> LLMParamsHistory:
+    params_db = ParamsDatabase(sqlite_dbname)
+    users_db = UserDatabase(sqlite_dbname)
+    db_params = params_db.get_all_params()
+    if db_params:
+        params_list = []
+        for param in db_params:
+            param_dict = param.toDict()
+            param_dict['params'] = json.loads(param.data)
+            param_dict['user'] = users_db.get_user_by_id(param.user_id).fullname
+            param_dict['hash'] = param_dict['data_hash']
+            params_list.append(param_dict)
+        return LLMParamsHistory(records=params_list)
+    raise HTTPException(status_code=404, detail={'msg':f"Params not available"})
+
 @app.get("/params/")
 def get_all_params(current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
@@ -412,7 +428,7 @@ def get_params(llmID:str, current_user: Annotated[User, Depends(get_current_acti
 def save_params(llmID: str, params: LLMParams, 
               current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
-    params_db.add_params_by_username(user_db.LLMParams(llmID, None, int(datetime.now().timestamp()), 
+    params_db.add_params_by_username(user_db.LLMParamsRec(llmID, None, int(datetime.now().timestamp()*1000), 
                                                        params.model_dump_json()), current_user.username)
     count = params_db.get_count_by_name(current_user.username, llmID)
     return {'llmID': llmID, 'count': count }

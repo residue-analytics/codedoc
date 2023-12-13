@@ -1,0 +1,31 @@
+{
+  "name": "Code Documentation Generator",
+  "version": "0.0.6",
+  "description": "Experimentaiton UI for Documentation Generator",
+  "private": true,
+  "scripts": {
+    "devbld": "gulp build --development",
+    "prodbld": "gulp build --production",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Shalin Garg",
+  "license": "Shalin Garg",
+  "devDependencies": {
+    "del": "^6.0.0",
+    "gulp": "^4.0.2",
+    "gulp-archiver2": "^1.1.6",
+    "gulp-clean-css": "^4.3.0",
+    "gulp-cssnano": "^2.1.3",
+    "gulp-mode": "^1.1.0",
+    "gulp-remove-code": "^3.0.4",
+    "gulp-rename": "^2.0.0",
+    "gulp-uglify": "^3.0.2",
+    "gulp-useref": "^5.0.0"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.9.2",
+    "bootstrap": "^5.0.1",
+    "jquery": "^3.6.0",
+    "navigo": "^8.11.1"
+  }
+}

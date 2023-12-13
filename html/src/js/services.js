@@ -1,4 +1,4 @@
-import { Model, ModelList, CodeFile, LLMParams } from "./models.js";
+import { Model, ModelList, CodeFile, LLMParams, LLMParamsHistory, User } from "./models.js";
 
 class WebError extends Error {
 
@@ -153,6 +153,16 @@ class LLMParamsService {
   constructor() {
   }
 
+  async getAllParamsHistory() {
+    const response = await new FetchAPI().get('/params-history/');
+    if (response.records) {
+      return new LLMParamsHistory(response);
+    } else {
+      console.log(response);
+      throw new Error('Unable to fetch all params history');
+    }
+  }
+
   async getAllParams() {
     const response = await new FetchAPI().get('/params/');
     if (response.param_list) {
@@ -222,9 +232,13 @@ class LoginService {
     await fetch("/logout");
   }
 
+  async me() {
+    return User.fromJSON(await new FetchAPI().get("/users/me"));
+  }
+
   async isSessionValid() {
     try {
-      await new ModelService().getModels();
+      await new LoginService().me();
     } catch (err) {
       return false;
     }

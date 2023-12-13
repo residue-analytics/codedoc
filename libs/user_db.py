@@ -15,7 +15,7 @@ class User:
         self.fullname = fullname 
         self.disabled = disabled
     
-    def toJSON(self):
+    def toString(self):
         return f"ID [{self.id}] Email [{self.email}] Name [{self.fullname}] Disabled [{self.disabled}]"
 
 class UserCredentials: 
@@ -24,19 +24,30 @@ class UserCredentials:
         self.username = username 
         self.password = password
     
-    def toJSON(self):
+    def toString(self):
         return f"User ID [{self.user_id}] Username [{self.username}] Pass [{self.password}]"
 
-class LLMParams:
-    def __init__(self, name, user_id, timestamp, data):
-        self.timestamp = timestamp
-        self.name = name
+class LLMParamsRec:
+    def __init__(self, name, user_id, timestamp, data, data_hash):
+        self.tm = timestamp
+        self.name = name            # Like LLM ID or something on which a query is needed
         self.user_id = user_id
         self.type = 'llm_params'
         self.data = data
+        self.data_hash = data_hash
 
-    def toJSON(self):
-        return f"llmID [{self.name}] Type [{self.type}] User [{self.user_id}] TS [{self.timestamp}] Data [{self.data}]"
+    def toString(self):
+        return f"llmID [{self.name}] Type [{self.type}] User [{self.user_id}] TS [{self.tm}] Data [{self.data}] Hash[{self.data_hash}]"
+    
+    def toDict(self):
+        return {
+            'tm': self.tm,
+            'name': self.name,
+            'user_id': self.user_id,
+            'type': self.type,
+            'data': self.data,
+            'data_hash': self.data_hash
+        }
 
 class UserDatabase: 
     def __init__(self, db_name): 
@@ -193,6 +204,13 @@ class ParamsDatabase:
                 user_id, hash
             )
         ''')
+
+        self.cursor.execute('''
+            CREATE INDEX IF NOT EXISTS hash_only_idx ON params (
+                hash
+            )
+        ''')
+
         self.conn.commit()
 
     def check_tables_exist(self):
@@ -213,7 +231,7 @@ class ParamsDatabase:
         hash_data = self.hash_data(params.data)
         if not self.check_hash_exists(params.user_id, hash_data):
             self.cursor.execute("INSERT INTO params ('tm', 'type', 'user_id', 'name', 'data', 'hash') VALUES (?, ?, ?, ?, ?, ?)", 
-                            (params.timestamp, params.type, params.user_id, params.name, 
+                            (params.tm, params.type, params.user_id, params.name, 
                              params.data, hash_data))
             self.conn.commit()
 
@@ -243,7 +261,7 @@ class ParamsDatabase:
             if row:
                 tm, type, user_id, name, data, hash = row
                 if type == "llm_params":
-                    return LLMParams(name, user_id, tm, data)
+                    return LLMParamsRec(name, user_id, tm, data, hash)
         return None
                 
     def get_params_by_userid(self, user_id):
@@ -253,7 +271,35 @@ class ParamsDatabase:
         for row in rows:
             tm, type, user_id, name, data, hash = row
             if type == "llm_params":
-                param_list.append(LLMParams(name, user_id, tm, data))
+                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
+        
+        if len(param_list) > 0:
+            return param_list
+        
+        return None
+
+    def get_params_by_hash(self, data_hash):
+        self.cursor.execute('SELECT * FROM params WHERE hash = ?', (data_hash,))
+        rows = self.cursor.fetchall()
+        param_list = []
+        for row in rows:
+            tm, type, user_id, name, data, hash = row
+            if type == "llm_params":
+                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
+        
+        if len(param_list) > 0:
+            return param_list
+        
+        return None
+
+    def get_all_params(self):
+        self.cursor.execute("select * from params")
+        rows = self.cursor.fetchall()
+        param_list = []
+        for row in rows:
+            tm, type, user_id, name, data, hash = row
+            if type == "llm_params":
+                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
         
         if len(param_list) > 0:
             return param_list

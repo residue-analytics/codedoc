@@ -1,0 +1,239 @@
+<div id="MainDiv">
+  <div class="container">
+    <div class="row justify-content-left align-items-center">
+      <div id="editor1" class="col-lg-6 mb-3">
+      </div>
+
+      <div id="editor2_wrapper" class="col-lg-6 mb-3">
+        <div id="editor2" class="rounded app_editor">
+          function foo(items) {
+          var x = "All this is syntax highlighted";
+          return x;
+          }
+        </div>
+        <div class="d-flex justify-content-center">
+          <div id="editor2_dragbar" class="app_editor_dragbar"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row align-items-top">
+      <div class="btn-toolbar justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
+        <div class="btn-group me-2 mb-3" role="group" aria-label="First group">
+          <button id="ModelSelectorBtn" type="button" class="btn btn-outline-secondary btn-sm active"
+            data-bs-toggle="button">
+            LLM <span class="badge text-bg-primary">None</span>
+          </button>
+          <button id="SysPromptBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            SP
+          </button>
+          <button id="ContextBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            Ctx
+          </button>
+          <button id="UsrPromptBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            UP
+          </button>
+          <button id="TemperatureBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            Temp <span class="badge text-bg-primary">0.1</span>
+          </button>
+          <button id="ToppBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            Top P <span class="badge text-bg-primary">0.5</span>
+          </button>
+          <button id="MaxTokensBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">Max
+            Toks</button>
+          <button id="RepeatPenaltyBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            Rep Pen <span class="badge text-bg-primary">1.0</span>
+          </button>
+          <button id="PresencePenaltyBtn" type="button" class="btn btn-outline-secondary btn-sm"
+            data-bs-toggle="button">
+            Prsn Pen <span class="badge text-bg-primary">0.0</span>
+          </button>
+          <button id="TopkBtn" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
+            Top K <span class="badge text-bg-primary">10</span>
+          </button>
+          <button id="SaveParams" title="Save Params" type="button" class="btn btn-outline-secondary btn-sm">
+            <span class="bi bi-floppy"></span>
+          </button>
+          <button id="ShowParamsHistory" title="Show History" type="button" class="btn btn-outline-secondary btn-sm">
+            <span class="bi bi-list"></span>
+          </button>
+        </div>
+
+        <div class="mb-3">
+          <button id="Discard" type="button" class="btn btn-primary btn-sm"
+            title="Discard the changes made to the file, load last version">Discard</button>
+          <button id="SaveFile" type="button" class="btn btn-primary btn-sm"
+            title="Save the changed file as a new Version on server">File Save</button>
+          <button id="SendToLLM" type="button" class="btn btn-primary btn-sm"
+            title="Send the prompts and params without any code">Send</button>
+          <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm"
+            title="Send File to LLM along with the prompts and params">Send <span
+              class="bi bi-file-code"></span></button>
+          <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
+            title="Send Selected Text to LLM along with the prompts and params">Send <span
+              class="bi bi-text-paragraph"></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row align-items-top mb-3">
+      <div class="col-lg-6 mb-3">
+        <form>
+          <div class="mb-3">
+            <label for="ModelSelector" class="form-label">Chat with LLM</label>
+            <select id="ModelSelector" class="form-select" aria-label="Select the LLM">
+              <option value="None" selected>None</option>
+              <option value="CLP">Code Llama Playground (CLP)</option>
+              <option value="L27B">Llama2 7B (L27B)</option>
+              <option value="O3.5">OpenAI GPT 3.5 (O3.5)</option>
+            </select>
+            <div class="form-text">
+              The Large Language Model to use for the task or question.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="SysPromptInput" class="form-label">System Prompt
+              <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
+                data-bs-prompt="System"></a>
+            </label>
+            <textarea id="SysPromptInput" class="form-control" rows="6" placeholder="System Prompt"></textarea>
+            <div class="form-text">
+              The system prompt helps set the behavior of the LLM/assistant. If properly crafted, the system message
+              can be used to set the tone and the kind of response by the model.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="ContextInput" class="form-label">Context</label>
+            <textarea id="ContextInput" class="form-control" rows="6" placeholder="Context"></textarea>
+            <div class="form-text">
+              The overall context of the conversation with the LLM. In a to-and-fro chat scenarios, whole chat
+              session history, including the answers by the LLM, becomes part of the context. This is
+              critical to be kept in check as the length (Max Tokens) is limited and too big a context can be
+              detrimental to the overall quality of the responses.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="UsrPromptInput" class="form-label">User Prompt
+              <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
+                data-bs-prompt="User"></a>
+            </label>
+            <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
+            <div class="form-text">
+              The user prompt poses the current task or question for the LLM.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="TemperatureInput" class="form-label">Temperature</label>
+            <input id="TemperatureInput" type="range" class="form-range" min="0" max="1" step="0.01" value="0.1">
+            <div class="form-text">
+              Temperature influences the shape of the probability distribution that the model calculates for
+              the next token rather than limiting the token selection.
+              A higher temperature (~1) results in more randomness and diversity in the generated text, as the
+              model is more likely to explore a wider range of possible tokens. For Code Generation tasks, lower
+              temperature is the recommended approach. <br>
+              <a href="https://ivibudh.medium.com/a-guide-to-controlling-llm-model-output-exploring-top-k-top-p-and-temperature-parameters-ed6a31313910"
+                target="_blank">Details</a>
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="ToppInput" class="form-label">Top-p</label>
+            <input id="ToppInput" type="range" class="form-range" min="0" max="1" step="0.01" value="0.5">
+            <div class="form-text">
+              Top-p, also known as nucleus sampling, controls the cumulative probability of the generated tokens.
+              The model generates tokens until the cumulative probability exceeds the chosen threshold (p).
+              This approach allows for more dynamic control over the length of the generated text and encourages
+              diversity in the output by including less probable tokens when necessary.
+              A larger value makes the LLM generate more random output.
+              Do not change this value together with temperature.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="MaxTokensInput" class="form-label">Max Tokens</label>
+            <div class="col-3">
+              <input id="MaxTokensInput" type="number" class="form-control" min="10" step="1" value="1024">
+            </div>
+            <div class="form-text">
+              Maximum length of the input tokens and generated tokens.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="RepeatPenaltyInput" class="form-label">Repeat Penalty</label>
+            <input id="RepeatPenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="1">
+            <div class="form-text">
+              A larger value decreases the likelihood of repetition of the same token/word/line according to frequency.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="PresencePenaltyInput" class="form-label">Presence Penalty</label>
+            <input id="PresencePenaltyInput" type="range" class="form-range" min="-2" max="2" step="0.1" value="0">
+            <div class="form-text">
+              A larger value decreases the likelihood of repetition of the same token/word/line.
+            </div>
+          </div>
+          <div class="mb-3 visually-hidden">
+            <label for="TopkInput" class="form-label">Top-k</label>
+            <div class="col-3">
+              <input id="TopkInput" type="number" class="form-control" min="1" max="100" step="1" value="10">
+            </div>
+            <div class="form-text">
+              Top-k limits the model's predictions to the top k most probable tokens at each step of generation.
+              By setting a value for k, you are instructing the model to consider only the k most likely tokens.
+              Top-k is useful for avoiding nonsensical responses. For example, if you set Top-k to 10, the LLM
+              will only consider the 10 most probable next words.
+              This will result in more fluent text, but it will also reduce the diversity of the text.
+              Top-k is similar to Top-p but with a fixed number. Top-p limits us to the top tokens within a
+              certain probability mass (p).
+              Top-k provides a controlled randomness by considering a fixed number of top probable tokens,
+              while top-p allows for dynamic control of the number of tokens considered, leading to different levels
+              of diversity in the generated text.
+            </div>
+          </div>
+        </form>
+      </div>
+      <div id="ModelOutput_wrapper" class="col-lg-6 mb-3">
+        <div id="ModelOutput" class="rounded app_editor">
+          LLM Output comes here, when you use the "Send **" buttons!!
+        </div>
+        <div class="d-flex justify-content-center">
+          <div id="ModelOutput_dragbar" class="app_editor_dragbar"></div>
+        </div>
+
+      </div>
+    </div>
+
+    <div id="PromptsListModal" tabindex="-1" class="modal fade">
+      <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5">Saved Prompts List</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            ...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="ParamsHistoryModal" tabindex="-1" class="modal fade">
+      <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5">Params saved by all Users</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <table id="ParamsHistoryTable" class="table table-sm table-bordered" style="width:100%">
+
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!--build:js(src) workspace/index.js -->
+  <script src="workspace/index.js" type="module"></script>
+  <!-- endbuild -->
+
+</div>

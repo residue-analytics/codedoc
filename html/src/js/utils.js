@@ -1,3 +1,5 @@
+import { LoginService } from "./services.js";
+
 class UIUtils {
   static showAlert(alertNodeID, message, durSecs = 5) {
     const parentDiv = document.getElementById(alertNodeID);
@@ -13,8 +15,12 @@ class UIUtils {
 
     if (durSecs > 0) {
       setTimeout(function () {
-        const bsAlert = bootstrap.Alert.getOrCreateInstance(`#${alert.id}`);
-        bsAlert.close();
+        try {
+          const bsAlert = bootstrap.Alert.getOrCreateInstance(`#${alert.id}`);
+          bsAlert && bsAlert.close();
+        } catch (err) {
+        }
+
         //let atNode = document.querySelector(`#${alertNodeID} > .alert`);
         //if (atNode) {
         //  atNode.classList.remove('show');
@@ -110,4 +116,103 @@ class UIUtils {
   }
 }
 
-export { UIUtils };
+class UsersManager {
+  static sessOwner = null;    // username of session owner
+  static userMap = new Map()  // username -> User Entity
+
+  constructor() {
+  }
+
+  static userIsPresent() {
+    try {
+      if (this.sessOwner) {
+        return true;
+      }
+    } catch (ex) {
+    }
+
+    return false;
+  }
+
+  static async getLoggedInUser() {
+    if (!this.sessOwner) {
+      let userdata = await new LoginService().me();
+      this.userMap.set(userdata.username, userdata);
+      this.sessOwner = userdata.username;
+      console.log("Logged in User " + this.sessOwner);
+    }
+
+    return this.userMap.get(this.sessOwner);
+  }
+
+  static async logoutUser() {
+    //globals.userLogout();
+    console.log("Calling logout service");
+    AppGlobals.instance.clearStorage();
+    UsersManager.sessOwner = null;
+    UsersManager.userMap = new Map();
+    return await new LoginService().logout();
+  }
+}
+
+class AppGlobals {
+  static instance = new this();
+
+  constructor() {
+    this.router = null;
+    this._errNodeID = null;
+  }
+
+  clearStorage() {
+    sessionStorage.clear();
+  }
+
+  getToken() {
+    let token = sessionStorage.getItem('token');
+    if (token) return JSON.parse(token);
+    return null;
+  }
+
+  saveToken(tokenJSON) {
+    sessionStorage.setItem('token', JSON.stringify(tokenJSON));
+  }
+
+  set alertMessage(message) {
+    UIUtils.showAlert(this.errorAlertNodeID, message);
+  }
+
+  showAlertMessage(message) {
+    this.alertMessage = message;
+  }
+
+  startProgress() {
+    globalProgress.pctValue = 0;
+  }
+
+  incrProgress(value, max = 100) {
+    let cur = globalProgress.pctValue;
+    if (cur >= 100) {
+      // We are already at full, we restart from 0 in place of incrementing it
+      this.setProgress(value, max);
+    } else {
+      globalProgress.pctValue = cur + ((value / max) * 100) | 0;
+    }
+  }
+
+  setProgress(value, max = 100) {
+    globalProgress.pctValue = ((value / max) * 100) | 0;  // bitwise OR to truncate the float
+  }
+
+  get errorAlertNodeID() {
+    return this._errNodeID;
+  }
+  set errorAlertNodeID(val) {
+    this._errNodeID = val;
+  }
+
+  redirectToHome() {
+    window.location.href = "/html";
+  }
+}
+
+export { UIUtils, UsersManager, AppGlobals };

@@ -145,7 +145,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],
+                           response: Response):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -156,6 +157,20 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         username: str = payload.get("sub")
         if username is None:
             raise credentials_exception
+        
+        expires = datetime.fromtimestamp(payload.get("exp"), timezone.utc)
+        if expires < datetime.now(timezone.utc):
+            raise credentials_exception
+
+        if expires - datetime.now(timezone.utc) < timedelta(minutes=5):
+            # token expiring within 5 minutes, reissue a new one
+            access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+            access_token = create_access_token(
+                data={"sub": username}, expires_delta=access_token_expires
+            )
+            response.set_cookie(key="session_id", value=access_token, 
+                                expires=datetime.now(timezone.utc) + access_token_expires, secure=False, httponly=True)
+        
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
@@ -198,7 +213,7 @@ async def logout(response: Response):
     response.set_cookie(key="session_id", value="", 
                         expires=datetime.now(timezone.utc), secure=False, httponly=True)
     return {"result": "success"}
-
+    
 @router.get("/users/me/", response_model=User)
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)]

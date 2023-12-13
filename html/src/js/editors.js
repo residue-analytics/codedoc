@@ -1,6 +1,7 @@
 import { FilesService } from "./services.js";
 import { UIUtils } from "./utils.js";
 import { CodeFile, CodeFileCache } from "./models.js";
+import  "https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/ace.min.js";
 
 class VanillaEditor {
   constructor(editorID) {
@@ -124,12 +125,75 @@ class VanillaEditor {
   }
 }
 
+/**
+ * Global variable to store the ids of the status of the current dragged ace editor.
+ */
+window.draggingAceEditor = {};
+
 class AceEditor {
   constructor(editorID) {
     this.editor = ace.edit(editorID);
+    ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/");
     this.editor.setTheme("ace/theme/monokai");
     this.curFile = null;
     this.fileCache = new CodeFileCache();
+    this.makeAceEditorResizable(this.editor);
+  }
+
+  makeAceEditorResizable(editor) {
+    const id_editor = editor.container.id;
+    const id_dragbar = '#' + id_editor + '_dragbar';
+    const id_wrapper = '#' + id_editor + '_wrapper';
+    let wpoffset = 0;
+    window.draggingAceEditor[id_editor] = false;
+
+    $(id_dragbar).mousedown(function (e) {
+      e.preventDefault();
+
+      window.draggingAceEditor[id_editor] = true;
+
+      const _editor = $('#' + id_editor);
+      const top_offset = _editor.offset().top - wpoffset;
+
+      // Set editor opacity to 0 to make transparent so our wrapper div shows
+      _editor.css('opacity', 0);
+
+      // handle mouse movement
+      $(document).mousemove(function (e) {
+        const actualY = e.pageY - wpoffset;
+        // editor height
+        const eheight = actualY - top_offset;
+
+        // Set wrapper height
+        $(id_wrapper).css('height', eheight);
+
+        // Set dragbar opacity while dragging (set to 0 to not show)
+        $(id_dragbar).css('opacity', 0.15);
+      });
+    });
+
+    $(document).mouseup(function (e) {
+      if (window.draggingAceEditor[id_editor]) {
+        const ctx_editor = $('#' + id_editor);
+
+        const actualY = e.pageY - wpoffset;
+        const top_offset = ctx_editor.offset().top - wpoffset;
+        const eheight = actualY - top_offset;
+
+        $(document).unbind('mousemove');
+
+        // Set dragbar opacity back to 1
+        $(id_dragbar).css('opacity', 1);
+
+        // Set height on actual editor element, and opacity back to 1
+        ctx_editor.css('height', eheight).css('opacity', 1);
+
+        // Trigger ace editor resize()
+        editor.resize();
+
+        window.draggingAceEditor[id_editor] = false;
+      }
+    });
   }
 
   async editFile(filepath) {
@@ -194,7 +258,7 @@ class AceEditor {
   setText(content) {
     this.editor.session.setValue(content);
   }
-  
+
   getCode() {
     return this.editor.session.getValue();
   }

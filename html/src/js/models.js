@@ -130,11 +130,85 @@ class LLMParams {
   }
 }
 
+class LLMParamsSnap {
+  constructor(tm=null, user="", hash="", params=None) {
+    this.tm = tm;
+    this.user = user;
+    this.hash = hash;
+    this.params = params;
+  }
+
+  toJSON() {
+    return {
+      tm: this.tm,
+      user: this.user,
+      hash: this.hash,
+      params: this.params.toJSON(),
+    };
+  }
+
+  static fromJSON(json) {
+    return new LLMParamsSnap(
+      json.tm, 
+      json.user, 
+      json.hash, 
+      LLMParams.fromJSON(json.params)
+    );
+  }
+}
+
+class LLMParamsHistory {
+  constructor(paramsSnaps={records:[]}) {
+    this.records = paramsSnaps.records;
+    this.user_tm_tree = new Map();
+    if (this.records && this.records.length > 0) {
+      this.updateTree(this.records);
+    }
+  }
+
+  count() {
+    return this.records.length;
+  }
+
+  updateTree(paramsSnaps) {
+    paramsSnaps.forEach((paramsSnap) => {
+      const tm_tree = this.user_tm_tree.get(paramsSnap.user);
+      if (tm_tree) {
+        tm_tree[paramsSnap.tm] = LLMParamsSnap.fromJSON(paramsSnap);
+      } else {
+        const tm_tree = new Map();
+        tm_tree[paramsSnap.tm] = LLMParamsSnap.fromJSON(paramsSnap);
+        this.user_tm_tree[paramsSnap.user] = tm_tree;
+      }
+    });
+  }
+
+  addParam(param) {
+    this.records.append(param);
+    this.updateTree([param]);
+  }
+
+  toJSON() {
+    return {
+      records: this.records.map((paramsSnap) => paramsSnap.toJSON())
+    }
+  }
+
+  static fromJSON(json) {
+    if (json.records && json.records.length > 0) {
+      return new LLMParamsHistory(json);
+    }
+
+    throw new Error("Cannot create Params History without history records");
+  }
+}
+
 class CodeFile {
   constructor(name, version = 0, content = null) {
     this.name = name;
     this.version = version == null ? 0 : version;
     this.content = content;
+    this.llmParams = null;
   }
 
   toJSON() {
@@ -170,4 +244,75 @@ class CodeFileCache {
   }
 }
 
-export { Model, ModelKwargs, LLMParams, ModelList, CodeFile, CodeFileCache }
+class User {
+  constructor(username, email, fullname, disabled) {
+    this.username = username;
+    this.email = email
+    this.fullname = fullname;
+    this.disabled = disabled;
+  }
+
+  toJSON() {
+    return {
+      username: this.username,
+      email: this.email,
+      fullname: this.fullname,
+      disabled: this.disabled
+    };
+  }
+
+  static fromJSON(json) {
+    return new User(
+      json.username,
+      json.email,
+      json.fullname,
+      json.disabled
+    );
+  }
+}
+
+class GlobalData {
+  constructor() {
+    this._usr = "guest";
+    this._gcred = null;
+    this._livetm = 0;  // msec
+    
+  }
+
+  userLogout() {
+    this._usr = "guest";
+    this._gcred = null;
+    this._livetm = 0;
+  }
+
+  userNav() {
+    this._livetm = 0;
+  }
+
+
+  get username() {
+    return this._usr;
+  }
+  set username(val) {
+    this._usr = val;
+  }
+
+  get gcred() {
+    return this._gcred;
+  }
+  set gcred(val) {
+    this._gcred = val;
+  }
+
+  get now() {
+    // msec
+    return this._livetm;
+  }
+  set now(val) {
+    //console.log(`DBG: Global now set to [${val}]`);
+    this._livetm = val;
+  }
+}
+
+
+export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, CodeFileCache, User, GlobalData }

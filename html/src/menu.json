@@ -1,0 +1,18 @@
+{
+    "auth" : {
+        "hash" : [
+            "home", "utils/chat", "utils/playground", "workspace", "about", "terms",
+			"disclaimer", "privacy", "diagrams/class", "diagrams/sequence", "diagrams/dataflow",  
+			"settings", "api", "logout"
+        ],
+        "id" : [
+		 "utilitiesDropdown",
+                 "diagramsDropdown"
+        ]
+    },
+    "unauth" : {
+        "hash" : [
+            "home", "login", "learn", "about", "terms", "disclaimer", "privacy"
+        ]
+    }
+}

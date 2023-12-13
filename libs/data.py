@@ -3,10 +3,11 @@
 __version__ = "0.1"
 __author__  = "Shalin Garg"
 
-from pydantic            import BaseModel
+from typing    import List
+from pydantic  import BaseModel
 import os
 
-__all__ = ["EnvVars", "LLMParams", "File"]
+__all__ = ["EnvVars", "LLMParams", "File", "LLMParamsSnap", "LLMParamsHistory"]
 
 class EnvVars:
     @classmethod
@@ -52,6 +53,14 @@ class File(BaseModel):
     version: int | None = None
     content: str | None = None # file content
 
+class LLMParamsSnap(BaseModel):
+    tm: int
+    user: str
+    hash: str
+    params: LLMParams
+
+class LLMParamsHistory(BaseModel):
+    records: List[LLMParamsSnap]
 
 if __name__ == '__main__':
   print ('Cannot execute as a program, it is a module')
