@@ -164,7 +164,7 @@ app = FastAPI(
 )
 
 # To serve static files from /html directory
-app.mount("/html", StaticFiles(directory="./html/staging", html=True), name="html")
+app.mount("/html", StaticFiles(directory="./html/src", html=True), name="html")
 app.include_router(auth.router)
 
 user_template = """{user_prompt}."""

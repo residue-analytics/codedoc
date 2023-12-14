@@ -10,7 +10,7 @@ class VanillaEditor {
     //this.refreshHandles();
   }
 
-  static initialize(editorID, filepathList) {
+  static initialize(editorID, filepathList, editable=false) {
     const editor = document.getElementById(editorID);
     if (editor.querySelector(".vtv")) {
       console.log(`VanillaEditor is already initialized on ${editorID}!!`);
@@ -25,7 +25,7 @@ class VanillaEditor {
     filepathList.forEach(file => {
       let li = document.createElement("li");
       li.setAttribute("data-path", file);
-      li.setAttribute("data-url", "/files/" + file + "?raw=true");
+      li.setAttribute("data-url", "/files/" + file + "?raw=true&editable=" + editable);
       editorlist.appendChild(li);
     });
 

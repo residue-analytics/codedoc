@@ -4,11 +4,11 @@ var router = null;
 
 var routes = [
   ["/", async (match) => {
-    console.log("Nav: / home");
+    //console.log("Nav: / home");
     renderURL('home');
   }],
   ["home", async (match) => {
-    console.log("Nav: home home");
+    //console.log("Nav: home home");
     renderURL('home');
     activateNavLink(match.url);
   }],
@@ -23,7 +23,7 @@ var routes = [
   ["workspace", (match) => {
     renderURL("workspace");
     activateNavLink(match.url);
-  }],
+  }, authBeforeHook],
   ["about", (match) => {
     renderURL("about");
     activateNavLink(match.url);
@@ -52,8 +52,8 @@ var routes = [
     renderURL("diagrams/dataflow");
     activateNavLink(match.url);
   }, authBeforeHook],
-  ["settings", async (match) => {
-    renderURL("settings");
+  ["cleanup", async (match) => {
+    renderURL("cleanup");
     activateNavLink(match.url);
   }, authBeforeHook],
   //removeIf(production)
@@ -101,7 +101,7 @@ async function setupNavigation() {
   await checkLogin(false);
   await updateMenuRoutes(router, routes);
 
-  console.log("First Navigation");
+  //console.log("First Navigation");
   router.navigate("home");
 }
 
@@ -184,12 +184,18 @@ function authBeforeHook(done, match) {
 function render(uri, content) {
   if (typeof resdestroy !== "undefined") {
     // destroy the previous page resources
+    //console.log("Destroying from main index");
     resdestroy();
+  } else if (AppGlobals.instance.pageDestroy) {
+    //console.log("Destroying from main index using AppGlobals");
+    AppGlobals.instance.pageDestroy();
+    AppGlobals.instance.pageDestroy = null;
   }
 
   let element = document.querySelector("#content");
   element.innerHTML = content;
-  nodeScriptReplace(element);
+  loadModuleAndCallLayout(nodeScriptReplace(element))
+    .catch((err) => console.log(err));
   //console.log("Script replace done");
 }
 
@@ -291,6 +297,7 @@ function nodeScriptClone(node){
   while ( ++i < attrs.length ) {                                    
         script.setAttribute( (attr = attrs[i]).name, attr.value );
   }
+  //console.log(`Replacing script tag for [${script.src}]`);
   return script;
 }
 
@@ -298,3 +305,26 @@ function nodeScriptIs(node) {
   return node.tagName === 'SCRIPT';
 }
 
+async function loadModuleAndCallLayout(node) {
+  let i = -1, children = node.childNodes;
+  while (++i < children.length) {
+    if (nodeScriptIs(children[i]) === true) {
+      if (children[i].type == "module") {
+        //console.log(children[i]);
+        try {
+          let mod = await import(children[i].src)
+          console.log("Loaded module [" + children[i].src + "]");
+          //console.log(mod);
+          mod.default.setLayout();
+        } catch (err) {
+          console.log(err);
+          console.log("Unable to Load module [" + children[i].src + "]");
+        }
+      } else {
+        //console.log("Skipping loading [" + children[i].src + "] with type [" + children[i].type + "]");
+      }
+    } else {
+      //console.log("Found tag [" + children[i].tagName + "]");
+    }
+  }
+}

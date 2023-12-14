@@ -28,7 +28,7 @@ class UserCredentials:
         return f"User ID [{self.user_id}] Username [{self.username}] Pass [{self.password}]"
 
 class LLMParamsRec:
-    def __init__(self, name, user_id, timestamp, data, data_hash):
+    def __init__(self, name, user_id, timestamp, data, data_hash=None):
         self.tm = timestamp
         self.name = name            # Like LLM ID or something on which a query is needed
         self.user_id = user_id

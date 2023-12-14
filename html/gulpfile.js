@@ -32,8 +32,13 @@ function copyHTML() {
     .pipe(dest('dist'));
 }
 
+function copyJS() {
+  return src('src/**/*.js')
+    .pipe(dest('staging'));
+}
+
 function copyImages() {
-  return src('src/**/*.+(png|jpg|gif|svg|ico)')
+  return src('src/**/*.+(png|jpg|jpeg|gif|svg|ico)')
     .pipe(dest('dist'));
 }
 
@@ -75,6 +80,7 @@ exports.build = series(
   clean,
   parallel(
     convertHTML,
+    copyJS,
     copyImages,
     copyResources
   ),

@@ -2,7 +2,7 @@
 import { Model, ModelKwargs, LLMParams, ModelList } from "../js/models.js";
 import { WebError, ModelService, FilesService, LLMService, LLMParamsService, LoginService } from "../js/services.js";
 import { VanillaEditor, AceEditor } from "../js/editors.js";
-import { UIUtils } from "../js/utils.js";
+import { UIUtils, AppGlobals } from "../js/utils.js";
 
 class LLMParamUIPair {
   constructor(btnID, elemID, type, updateBadge=true, dualParent=false) {
@@ -226,10 +226,10 @@ class PageGlobals {
 
   }
 
-  loadReadOnlyEditor() {
+  async loadReadOnlyEditor() {
     // Populate the input directory tree in the read only editor
     try {
-      new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
+      await new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
     } catch (err) {
       console.log(err);
     }
@@ -252,11 +252,12 @@ class PageGlobals {
     let oldParams = sessionStorage.getItem(params.llmID);
     let newParams = JSON.stringify(params.toJSON());
     if (oldParams != newParams) {
-      sessionStorage.setItem(params.llmID, newParams);
+      
       console.log(`Params for [${params.llmID}] saved locally`);
       new LLMParamsService().saveParams(params).then(resp => {
           UIUtils.showAlert("erroralert", `Saved [${resp.llmID}] with count [${resp.count}] on server`);
-      });
+          sessionStorage.setItem(params.llmID, newParams);
+      }).catch(err => UIUtils.showAlert("erroralert", `Unable to save [${params.llmID}], err [${err}]`));
     } else {
       UIUtils.showAlert("erroralert", `Nothing new to save for [${params.llmID}]`);
     }
@@ -264,11 +265,14 @@ class PageGlobals {
 
   showLLMParamsHistory() {
     new LLMParamsService().getAllParamsHistory().then(history => {
-      console.log(history);
+      //console.log(history);
       UIUtils.showAlert("erroralert", `Received [${history.records.length}] reocrds from server`);
-      const dataTable = new DataTable("#ParamsHistoryTable", {
+
+      $("#ParamsHistoryModal .modal-body").append('<table id="ParamsHistoryTable" class="table table-sm table-bordered" style="width:100%"></table>');
+      
+      const dataTable = $("#ParamsHistoryTable").DataTable({
         destroy: true,
-        data: history.records,
+        data: history.records,   // Array of JSON flat objects, not LLMParams Model objects
         scrollX: true,
         fixedHeader: true,
         columns: [
@@ -287,19 +291,27 @@ class PageGlobals {
           { targets: 0, render: DataTable.render.datetime() }
         ]
       });
+
       dataTable.on('click', 'tbody tr', (event) => {
+        //console.log(event.currentTarget);
+        //console.log(dataTable.row(event.currentTarget));
         let data = dataTable.row(event.currentTarget).data();
-        console.log(data);
-        alert('You clicked on ' + data.user + "'s row");
+        //console.log(data);
+        if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID + 
+                    "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
+          console.log("Approved application!!");
+          
+          globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
+        }
       });
 
       dataTable.on('init.dt', () => {
         console.log("Table inited");
       });
-      
+
       const histModal = new bootstrap.Modal("#ParamsHistoryModal");
       histModal.show();
-  });
+    });
   }
 
   async getSavedLLMParams(modelID) {
@@ -337,16 +349,21 @@ class PageGlobals {
   }
 }
 
-const globals = new PageGlobals();
+let globals = null;
 
-setLayout();
+//setLayout();
 
 function resdestroy() {
+  //console.log("Destroying Workspace");
   if (globals) globals.destroy();
   globals = null;
 }
 
 async function setLayout() {
+  globals = new PageGlobals();
+
+  //console.log("Layout setup for workspace");
+  AppGlobals.instance.pageDestroy = resdestroy;
 
     // Attach Event Handlers
     globals.llmParamsUI.modelLLMParam = new LLMParamUIPair('ModelSelectorBtn', 'ModelSelector', 'select');
@@ -498,6 +515,14 @@ async function setLayout() {
         }
     });
 
+    $("#ParamsHistoryModal").on("hidden.bs.modal", (event)=> {
+      $("#ParamsHistoryTable").DataTable().destroy(true);
+    });
+
+    $("#ParamsHistoryModal").on("shown.bs.modal", (event)=> {
+      $("#ParamsHistoryTable").DataTable().columns.adjust().draw();
+    });
+
     let mainDiv = document.getElementById("MainDiv");
     
     //<!-- Vanilla Tree Viewer -->
@@ -512,6 +537,7 @@ async function setLayout() {
     //edtScript.onload = editor2setup;
     //mainDiv.appendChild(edtScript);
     editor2setup();
+
     //document.getElementById("evalinput").addEventListener("click", function(event) { UIUtils.addSpinnerToIconButton("SendFileToLLM");  });
 }
 
@@ -527,3 +553,5 @@ function editor2setup() {
   globals.setEditor("editor2");
   globals.setModelOutputEditor("ModelOutput");
 }
+
+export default { resdestroy, setLayout };

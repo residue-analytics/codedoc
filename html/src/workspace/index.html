@@ -1,7 +1,7 @@
 <div id="MainDiv">
   <div class="container">
     <div class="row justify-content-left align-items-center">
-      <div id="editor1" class="col-lg-6 mb-3">
+      <div id="editor1" class="col-lg-6 mb-3" style="height:400px">
       </div>
 
       <div id="editor2_wrapper" class="col-lg-6 mb-3">
@@ -54,24 +54,35 @@
           <button id="SaveParams" title="Save Params" type="button" class="btn btn-outline-secondary btn-sm">
             <span class="bi bi-floppy"></span>
           </button>
-          <button id="ShowParamsHistory" title="Show History" type="button" class="btn btn-outline-secondary btn-sm">
+          <button id="ShowParamsHistory" title="Show Params' History" type="button" class="btn btn-outline-secondary btn-sm">
             <span class="bi bi-list"></span>
           </button>
         </div>
 
         <div class="mb-3">
           <button id="Discard" type="button" class="btn btn-primary btn-sm"
-            title="Discard the changes made to the file, load last version">Discard</button>
+            title="Discard the changes made to the file, load last version">
+            <span class="bi bi-arrow-clockwise"></span>
+          </button>
           <button id="SaveFile" type="button" class="btn btn-primary btn-sm"
-            title="Save the changed file as a new Version on server">File Save</button>
-          <button id="SendToLLM" type="button" class="btn btn-primary btn-sm"
-            title="Send the prompts and params without any code">Send</button>
-          <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm"
-            title="Send File to LLM along with the prompts and params">Send <span
-              class="bi bi-file-code"></span></button>
-          <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
-            title="Send Selected Text to LLM along with the prompts and params">Send <span
-              class="bi bi-text-paragraph"></span></button>
+            title="Save the changed file as a new Version on server"> 
+            File <span class="bi bi-floppy"></span>
+          </button>
+          
+          <div class="btn-group" role="group" aria-label="Second group">
+            <button id="SendToLLM" type="button" class="btn btn-primary btn-sm"
+              title="Send prompts and params without any code">
+              Send
+            </button>
+            <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm"
+              title="Send File with prompts and params"> 
+              <span class="bi bi-file-code"></span>
+              </button>
+            <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
+              title="Send Selected Text with prompts and params"> 
+              <span class="bi bi-text-paragraph"></span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -223,17 +234,14 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <table id="ParamsHistoryTable" class="table table-sm table-bordered" style="width:100%">
-
-            </table>
+            
           </div>
         </div>
       </div>
     </div>
   </div>
-
-  <!--build:js(src) workspace/index.js -->
-  <script src="workspace/index.js" type="module"></script>
-  <!-- endbuild -->
-
 </div>
+
+<!--build:js(src) workspace/index.js type="module"-->
+<script src="workspace/index.js" type="module"></script>
+<!-- endbuild -->

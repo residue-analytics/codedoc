@@ -161,6 +161,7 @@ class AppGlobals {
   constructor() {
     this.router = null;
     this._errNodeID = null;
+    this._pageDestroy = null;
   }
 
   clearStorage() {
@@ -208,6 +209,13 @@ class AppGlobals {
   }
   set errorAlertNodeID(val) {
     this._errNodeID = val;
+  }
+
+  get pageDestroy() {
+    return this._pageDestroy;
+  }
+  set pageDestroy(val) {
+    this._pageDestroy = val;
   }
 
   redirectToHome() {

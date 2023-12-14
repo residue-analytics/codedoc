@@ -3,11 +3,11 @@
         "hash" : [
             "home", "utils/chat", "utils/playground", "workspace", "about", "terms",
 			"disclaimer", "privacy", "diagrams/class", "diagrams/sequence", "diagrams/dataflow",  
-			"settings", "api", "logout"
+			"cleanup", "api", "logout"
         ],
         "id" : [
-		 "utilitiesDropdown",
-                 "diagramsDropdown"
+		    "utilitiesDropdown",
+            "diagramsDropdown"
         ]
     },
     "unauth" : {

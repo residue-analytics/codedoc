@@ -1,13 +1,16 @@
 import { LoginService } from "../js/services.js";
 import { UIUtils, AppGlobals } from "../js/utils.js";
 
-setLayout();
+//setLayout();
 
 function resdestroy() {
-
+  //console.log("Destroying Login");
 }
 
 function setLayout() {
+    //console.log("Layout setup for login");
+    AppGlobals.instance.pageDestroy = resdestroy;
+
     document.getElementById("loginBtn").addEventListener("click", async (event) => {
         event.preventDefault();
         // TODO do something here to show user that form is being submitted
@@ -22,3 +25,5 @@ function setLayout() {
         }
     });
 }
+
+export default { resdestroy, setLayout };
