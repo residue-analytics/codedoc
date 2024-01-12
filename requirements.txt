@@ -9,3 +9,5 @@ openai
 python-multipart
 python-jose[cryptography]
 passlib[bcrypt]
+langchain-google-genai
+pillow

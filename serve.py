@@ -15,10 +15,12 @@ from langchain.globals   import set_llm_cache
 from langchain.cache     import InMemoryCache
 from langchain.prompts   import PromptTemplate
 from langchain.schema    import BaseOutputParser
-from langchain.schema    import HumanMessage
+from langchain.schema    import HumanMessage, SystemMessage
 from langchain.chat_models import AzureChatOpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.llms      import OpenAI
+from langchain.llms      import AzureOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.chains    import LLMChain
 from langserve           import add_routes
 from pathlib             import Path
@@ -73,7 +75,7 @@ MODELS = {
         }
     },
     'azure-openai-chat': {
-        'id_for_prvdr': 'AzureAI/OpenAIChat',
+        'id_for_prvdr': 'gpt-35-turbo-16k',
         'name': 'Azure OpenAI Chat',
         'code': 'AzOpC',
         'api-key': None,
@@ -83,11 +85,12 @@ MODELS = {
             'max_new_tokens': 256,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'repetition_penalty': 1
+            'repetition_penalty': 1,
+            'presence_penalty': 0
         }
     },
     'azure-openai-llm': {
-        'id_for_prvdr': 'text-davinci-003',
+        'id_for_prvdr': 'gpt-35-turbo-instruct',
         'name': 'Azure OpenAI LLM',
         'code': 'AzOpL',
         'api-key': None,
@@ -97,7 +100,8 @@ MODELS = {
             'max_new_tokens': 256,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'repetition_penalty': 1
+            'repetition_penalty': 1,
+            'presence_penalty': 0
         }
     },
     'openai-llm': {
@@ -150,6 +154,24 @@ class CommaSeparatedListOutputParser(BaseOutputParser[List[str]]):
         """Parse the output of an LLM call."""
         return text.strip().split(", ")
 
+def format_prompt(for_llm: bool, sys_mesg: str, ctxt: str, code: str, user_msg: str, history: str=None):
+    user_prompt = PromptTemplate(
+        template="History: {history}\n\nContext:{ctxt}\n\nCode:{code}\n\nUse the above provided Context & Code to fulfil the below request.\n{user}",
+        input_variables=['history', 'ctxt', 'code', 'user']
+    )
+    user_message = user_prompt.format(history=history, ctxt=ctxt, code=code, user=user_msg)
+    if for_llm:
+        if sys_mesg:
+            return sys_mesg + "\n\n" + user_message
+        else:
+            return user_message
+    else:
+        messages = [
+            SystemMessage(content=sys_mesg),
+            HumanMessage(content=user_message)
+        ]
+        return messages
+    
 set_verbose(True)
 
 # raise HTTPException(status_code=404, detail={'exp':excp_trace, 'msg':Message}) -> JSON { detail:{...}}
@@ -158,7 +180,7 @@ set_verbose(True)
 
 # App definition
 app = FastAPI(
-  title="LangChain HuggingFaceSpaces Server",
+  title="LangChain Multi LLM Server",
   version="1.0",
   description="A simple api server using Langchain's Runnable interfaces",
 )
@@ -175,18 +197,20 @@ prompt = PromptTemplate(
 )
 
 # initialize Spaces LLM
-spcs_llm = HuggingFaceSpaces(
-    task="summarization",
-    repo_id="huggingface-projects/llama-2-7b-chat",
-    model_kwargs={'system_prompt':'You are a helpful agent', 'max_new_tokens':256,'temperature':0.1,'topp_nucleus_sampling': 0.9,'topk':40,'repetition_penalty':1,'api_name':'/chat'}
-)
+#gem_llm = HuggingFaceSpaces(
+#    task="summarization",
+#    repo_id="huggingface-projects/llama-2-7b-chat",
+#    model_kwargs={'system_prompt':'You are a helpful agent', 'max_new_tokens':256,'temperature':0.1,'topp_nucleus_sampling': 0.9,'topk':40,'repetition_penalty':1,'api_name':'/chat'}
+#)
 
-category_chain = prompt | spcs_llm | CommaSeparatedListOutputParser()
+gem_llm = ChatGoogleGenerativeAI(model="gemini-pro", convert_system_message_to_human=True)
+
+category_chain = prompt | gem_llm | CommaSeparatedListOutputParser()
 
 add_routes(
     app,
     category_chain,
-    path="/spaces_chain",
+    path="/gem_chain",
 )
 
 @app.post("/llm/")
@@ -215,15 +239,30 @@ async def call_llm(params: LLMParams,
 
     if model_obj['provider'] == 'AzureChatOpenAI':
         model = AzureChatOpenAI(
+            model_name=model_obj['id_for_prvdr'],
             openai_api_version=os.getenv('OPENAI_API_VERSION'),
-            azure_deployment=os.getenv('AZURE_DEPLOYMENT_NAME') )
-        message = HumanMessage(params.user_prompt)
-        return { 'model_resp': str(model([message])) }
+            azure_deployment=model_obj['id_for_prvdr'],
+            temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
+            model_kwargs={ "top_p": kwargs['topp_nucleus_sampling'], 
+            "frequency_penalty": kwargs['repetition_penalty'], 
+            "presence_penalty": kwargs['presence_penalty'] }
+        )
+        message = format_prompt(False, params.system_prompt, params.context, params.code_snippet, params.user_prompt)
+        return { 'model_resp': str(model(message)) }
+    elif model_obj['provider'] == 'AzureOpenAILLM':
+        model = AzureOpenAI(
+            deployment_name=model_obj['id_for_prvdr'],
+            model_name=model_obj['id_for_prvdr'],
+            temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
+            top_p=kwargs['topp_nucleus_sampling'], frequency_penalty=kwargs['repetition_penalty'], 
+            presence_penalty=kwargs['presence_penalty']
+        )
+        message = format_prompt(True, params.system_prompt, params.context, params.code_snippet, params.user_prompt)
+        return { 'model_resp': str(model(message)) }
     elif model_obj['provider'] == 'OpenAI':
         local_llm = OpenAI(temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
             top_p=kwargs['topp_nucleus_sampling'], frequency_penalty=kwargs['repetition_penalty'], 
             presence_penalty=kwargs['presence_penalty'], model_name=model_obj['id_for_prvdr'])
-        
     elif model_obj['provider'] == 'ChatOpenAI':
         model = ChatOpenAI()
         message = HumanMessage(params.user_prompt)

@@ -16,7 +16,7 @@ class EnvVars:
         if provider == "AzureOpenAI":
             res &= cls.checkVar("OPENAI_API_TYPE", provider)
             res &= cls.checkVar("OPENAI_API_VERSION", provider)
-            res &= cls.checkVar("OPENAI_API_BASE", provider)
+            res &= cls.checkVar("AZURE_OPENAI_ENDPOINT", provider)
             res &= cls.checkVar("OPENAI_API_KEY", provider)
         elif provider == "OpenAI":
             res &= cls.checkVar("OPENAI_API_KEY", provider)

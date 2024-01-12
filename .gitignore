@@ -507,3 +507,4 @@ newcode/
 *.tar.gz
 staging
 package-lock.json
+start.sh
