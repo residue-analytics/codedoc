@@ -7,33 +7,7 @@ from typing    import List
 from pydantic  import BaseModel
 import os
 
-__all__ = ["EnvVars", "LLMParams", "File", "LLMParamsSnap", "LLMParamsHistory"]
-
-class EnvVars:
-    @classmethod
-    def checkEnviron(cls, provider:str):
-        res = True
-        if provider == "AzureOpenAI":
-            res &= cls.checkVar("OPENAI_API_TYPE", provider)
-            res &= cls.checkVar("OPENAI_API_VERSION", provider)
-            res &= cls.checkVar("OPENAI_API_BASE", provider)
-            res &= cls.checkVar("OPENAI_API_KEY", provider)
-        elif provider == "OpenAI":
-            res &= cls.checkVar("OPENAI_API_KEY", provider)
-        elif provider == "AzureChatOpenAI":
-            res &= cls.checkVar("AZURE_OPENAI_API_KEY", provider)
-            res &= cls.checkVar("AZURE_OPENAI_ENDPOINT", provider)
-            res &= cls.checkVar("OPENAI_API_VERSION", provider)
-            res &= cls.checkVar("AZURE_DEPLOYMENT_NAME", provider)
-        
-        return res
-    
-    @classmethod
-    def checkVar(cls, varname:str, provider:str):
-        if (os.getenv(varname)) is None:
-            print(f"Env Var [{varname}] is required for provider [{provider}]")
-            return False
-        return True
+__all__ = ["LLMParams", "File", "LLMParamsSnap", "LLMParamsHistory"]
 
 class LLMParams(BaseModel):
     llmID: str
@@ -56,6 +30,7 @@ class File(BaseModel):
 class LLMParamsSnap(BaseModel):
     tm: int
     user: str
+    purpose: str
     hash: str
     params: LLMParams
 

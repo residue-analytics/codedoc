@@ -39,7 +39,7 @@
   }
 
   .app_editor {
-    height: 400px;
+    height: 370px;
   }
   
   .app_editor_wrapper {
@@ -55,7 +55,13 @@
     opacity: 1;
   }
   
+  .aceeditor_cmdbar {
+    background-color: #525154;
+}
 
+.aceeditor_cmdbar button {
+    background-color: #525154;
+}
 /* 
   https://wordpress.org/support/topic/main-scrollbar-disappears-upon-triggering-a-modal-page-content-shifts-right/
   https://wordpress.org/support/topic/bug-with-a-moving-button-and-extra-gap/

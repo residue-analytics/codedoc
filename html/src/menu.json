@@ -3,11 +3,12 @@
         "hash" : [
             "home", "utils/chat", "utils/playground", "workspace", "about", "terms",
 			"disclaimer", "privacy", "diagrams/class", "diagrams/sequence", "diagrams/dataflow",  
-			"cleanup", "api", "logout"
+			"agent/config", "agent/control", "agent/batch", "cleanup", "api", "logout"
         ],
         "id" : [
 		    "utilitiesDropdown",
-            "diagramsDropdown"
+            "diagramsDropdown",
+            "agentDropdown"
         ]
     },
     "unauth" : {

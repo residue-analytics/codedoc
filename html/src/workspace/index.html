@@ -1,15 +1,40 @@
 <div id="MainDiv">
   <div class="container">
-    <div class="row justify-content-left align-items-center">
+    <div class="row justify-content-left align-items-top">
       <div id="editor1" class="col-lg-6 mb-3" style="height:400px">
       </div>
 
       <div id="editor2_wrapper" class="col-lg-6 mb-3">
-        <div id="editor2" class="rounded app_editor">
-          function foo(items) {
-          var x = "All this is syntax highlighted";
-          return x;
-          }
+        <div class="btn-toolbar aceeditor_cmdbar rounded-top" role="toolbar" aria-label="Editor toolbar with button groups">
+          <div class="btn-group" role="group" aria-label="First group">
+            <button id="NewFile" type="button" class="btn btn-sm text-light" 
+              title="Create a new file on the server"> <span class="bi bi-file-earmark-plus"></span>
+            </button>
+            <button id="UndoFile" type="button" class="btn btn-sm text-light"
+              title="Undo the last change"> <span class="bi bi-arrow-counterclockwise"></span>
+            </button>
+            <button id="RedoFile" type="button" class="btn btn-sm text-light"
+              title="Redo the last Undo"> <span class="bi bi-arrow-clockwise"></span>
+            </button>
+            <button id="Beautify" type="button" class="btn btn-sm text-light"
+              title="Beautify / Format the code">
+              <span class="bi bi-text-indent-left"></span>
+            </button>
+            <button id="WordWrap" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
+              title="Use Word Wrap">
+              <span class="bi bi-text-wrap"></span>
+            </button>
+            <button id="Discard" type="button" class="btn btn-sm text-light"
+              title="Reload last version of the file discarding all the unsaved changes">
+              <span class="bi bi-file-earmark-arrow-up"></span>
+            </button>
+            <button id="SaveFile" type="button" class="btn btn-sm text-light" 
+              title="Save the changed file as a new Version on server"> <span class="bi bi-floppy"></span>
+            </button>
+          </div>
+        </div>
+        <div id="editor2" class="rounded-bottom app_editor">
+Select a file in the folder tree view, to edit it here.
         </div>
         <div class="d-flex justify-content-center">
           <div id="editor2_dragbar" class="app_editor_dragbar"></div>
@@ -60,23 +85,27 @@
         </div>
 
         <div class="mb-3">
-          <button id="Discard" type="button" class="btn btn-primary btn-sm"
-            title="Discard the changes made to the file, load last version">
-            <span class="bi bi-arrow-clockwise"></span>
-          </button>
-          <button id="SaveFile" type="button" class="btn btn-primary btn-sm"
-            title="Save the changed file as a new Version on server"> 
-            File <span class="bi bi-floppy"></span>
-          </button>
-          
           <div class="btn-group" role="group" aria-label="Second group">
+            <button id="FileToCtx" type="button" class="btn btn-primary btn-sm"
+              title="Add File to Context">
+              <span class="bi bi-journal-code"></span>
+            </button>
+            <button id="SelectionToCtx" type="button" class="btn btn-primary btn-sm"
+              title="Add Selected Text to Context"> 
+              <span class="bi bi-journal-text"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="btn-group" role="group" aria-label="Third group">
             <button id="SendToLLM" type="button" class="btn btn-primary btn-sm"
               title="Send prompts and params without any code">
               Send
             </button>
             <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm"
               title="Send File with prompts and params"> 
-              <span class="bi bi-file-code"></span>
+              <span class="bi bi-file-earmark-code"></span>
               </button>
             <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
               title="Send Selected Text with prompts and params"> 
@@ -84,6 +113,7 @@
             </button>
           </div>
         </div>
+
       </div>
     </div>
 
@@ -209,6 +239,23 @@
           <div id="ModelOutput_dragbar" class="app_editor_dragbar"></div>
         </div>
 
+      </div>
+    </div>
+
+    <div id="ParamsPurposeModal" tabindex="-1" class="modal fade">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Purpose or Usage Comments to save along with this set of Params</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <textarea class="form-control" id="ParamsPurposeModalText" rows="3"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save</button>
+          </div>
+        </div>
       </div>
     </div>
 

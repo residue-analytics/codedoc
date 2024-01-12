@@ -1,12 +1,17 @@
 import { FilesService } from "./services.js";
 import { UIUtils } from "./utils.js";
-import { CodeFile, CodeFileCache } from "./models.js";
-import  "https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/ace.min.js";
+import { CodeFile, CodeFileCache, FileTree } from "./models.js";
+import  "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ace.min.js";
+import  "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ext-beautify.js";
 
 class VanillaEditor {
   constructor(editorID) {
     // Live Element
     this.editorHandle = document.getElementById(editorID);
+    this.treeHandle = null;
+    this.codepanelHandle = null;
+    this.dirHandles = null;
+    this.fileHandles = null;
     //this.refreshHandles();
   }
 
@@ -25,6 +30,7 @@ class VanillaEditor {
     filepathList.forEach(file => {
       let li = document.createElement("li");
       li.setAttribute("data-path", file);
+      // raw to make server handle form post, editable is for loading from output folder
       li.setAttribute("data-url", "/files/" + file + "?raw=true&editable=" + editable);
       editorlist.appendChild(li);
     });
@@ -101,6 +107,31 @@ class VanillaEditor {
     return null;
   }
 
+  strikeThroughTreeNode(dataPathValue, type) {
+
+    if (type == "file") {
+      let treeHandle = this.editorHandle.querySelector(".vtv__tree");
+      let fileHandles = treeHandle.querySelectorAll(".vtv__tree-node.vtv__tree-node--file");
+      fileHandles.forEach(fileHandle => {
+        if (fileHandle.getAttribute('data-path') == dataPathValue) {
+          fileHandle.classList.add('text-decoration-line-through');
+          return;
+        }
+      });
+    } else if (type == "dir") {
+      let treeHandle = this.editorHandle.querySelector(".vtv__tree");
+      let dirHandles = treeHandle.querySelectorAll(".vtv__tree-node.vtv__tree-node--directory");
+      dirHandles.forEach(dirHandle => {
+        if (dirHandle.getAttribute('data-path') == dataPathValue) {
+          dirHandle.classList.add('text-decoration-line-through');
+          return;
+        }
+      });
+    } else {
+      throw new Error("Inavlid node type");
+    }
+  }
+
   setupListenersOnTree(callback) {
     // Sets-up click event handlers on directory and file nodes in the editor directory tree.
     // The "callback" is called with the clicked directory or file names available through the "data-path"
@@ -133,11 +164,12 @@ window.draggingAceEditor = {};
 class AceEditor {
   constructor(editorID) {
     this.editor = ace.edit(editorID);
-    ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/");
+    ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/");
     this.editor.setTheme("ace/theme/monokai");
     this.curFile = null;
     this.fileCache = new CodeFileCache();
     this.makeAceEditorResizable(this.editor);
+    this.beautifier = ace.require("ace/ext/beautify");
   }
 
   makeAceEditorResizable(editor) {
@@ -196,20 +228,22 @@ class AceEditor {
     });
   }
 
-  async editFile(filepath) {
+  async editFile(filepath, editable=true, showVersion=true) {
     let file = null;
     if (this.curFile == null) {
       try {
-        file = await new FilesService().getFileContent(filepath, true);
+        file = await new FilesService().getFileContent(filepath, editable);
       } catch (err) {
-        if (err.code == 404) {
+        if (err.code == 404 && editable) {
           file = await new FilesService().getFileContent(filepath, false);  // Get the original file
         } else {
           throw err;
         }
       }
 
-      UIUtils.showAlert("erroralert", `Version [${file.version}] of file [${file.name}] is in the Editor`);
+      if (showVersion) {
+        UIUtils.showAlert("erroralert", `Version [${file.version}] of file [${file.name}] is in the Editor`);
+      }
       this.editor.session.setValue(file.content);
       this.setEditMode(file.name);
       this.curFile = file;
@@ -232,6 +266,26 @@ class AceEditor {
 
   discardChanges() {
     this.editor.session.setValue(this.curFile.content);
+  }
+
+  hasWordWrap() {
+    return this.editor.session.getUseWrapMode();
+  }
+
+  useWordWrap(on=true) {
+    this.editor.session.setUseWrapMode(on);
+  }
+
+  toggleWordWrap() {
+    this.useWordWrap(!this.hasWordWrap());
+  }
+
+  undo() {
+    this.editor.undo();
+  }
+
+  redo() {
+    this.editor.redo();
   }
 
   curFileSavedSuccessfully(file) {
@@ -259,6 +313,10 @@ class AceEditor {
     this.editor.session.setValue(content);
   }
 
+  beautify() {
+    this.beautifier.beautify(this.editor.session);
+  }
+
   getCode() {
     return this.editor.session.getValue();
   }
@@ -272,4 +330,93 @@ class AceEditor {
   }
 }
 
-export { VanillaEditor, AceEditor }
+class TreeView {
+  // https://github.com/lunu-bounir/tree.js/
+  constructor(treeID) {
+    this.treeID = treeID;
+    this.tree = null;
+    this.jsonTree = null;
+  }
+
+  destroy() {  // TODO: Remove Event Listeners set on the parent
+    if (this.tree) {
+      $("#" + this.treeID).empty();
+      this.tree = null;
+      this.jsonTree = null;
+    }
+  }
+
+  initialize(fileList, actionCallback) {
+    this.tree = new Tree(document.getElementById(this.treeID), {
+      navigate: true // allow navigate with ArrowUp and ArrowDown
+    });
+
+    this.tree.on('select', e => { 
+      actionCallback(this.tree.getPath(e), e.dataset.type ? e.dataset.type : Tree.FOLDER); 
+    });
+
+    this.jsonTree = new FileTree(fileList);
+    //console.log(this.jsonTree.getFormattedTreejs());
+    this.tree.json(this.jsonTree.getFormattedTreejs());
+  }
+
+  removeCurActive() {
+    this.tree.remove(this.tree.active());
+  }
+
+  setupSelectListener(callback) {
+    this.tree.on('select', e => callback(this.tree.getPath(e), e.dataset.type ? e.dataset.type : Tree.FOLDER));
+  }
+
+  getPath(element) {
+    return this.tree.getPath(element);
+  }
+}
+
+class AceEditorWithTree {
+  static FILE = Tree.FILE;
+  static FOLDER = Tree.FOLDER;
+
+  constructor(treeID, editorID) {
+    this.treeID = treeID;
+    this.editorID = editorID;
+
+    this.tree = new TreeView(this.treeID);
+    this.editor = new AceEditor(this.editorID);
+    this.treeCallback = null;
+  }
+
+  destroy() {  // TODO: Remove the Event Listeners on the parent
+    if (this.tree) {
+      this.tree.destroy();
+      this.tree = null;
+    }
+  }
+
+  initialize(fileList) {
+    this.tree.initialize(fileList, (filepath, type) => {
+      //console.log(type + " " + filepath);
+      if (type == this.FILE) {
+        this.editor.editFile(filepath, true, false); // Editable files with no version alert
+      }
+    });
+  }
+
+  removeCurActive() {
+    this.tree.removeCurActive();
+  }
+
+  reloadTree(fileList) {  // TODO: Remove the Event Listeners on the parent
+    this.destroy();
+    this.tree = new TreeView(this.treeID);
+    this.initialize(fileList);
+    this.setupSelectListener(this.treeCallback);
+  }
+
+  setupSelectListener(callback) {
+    this.treeCallback = callback;
+    this.tree.setupSelectListener(callback);
+  }
+}
+
+export { VanillaEditor, AceEditor, AceEditorWithTree }

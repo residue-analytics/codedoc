@@ -52,6 +52,22 @@ class FetchAPI {
     return await response.json();
   }
 
+  async delete(uri, query=null, data=null) {    // data : JSON
+    const urlObj = new URL(uri, window.location.origin);
+    if (query) {
+      Object.keys(query).forEach(key => urlObj.searchParams.append(key, query[key]));
+    }
+    const response = await fetch(urlObj.toString(), {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: data ? JSON.stringify(data) : ""
+    });
+    await this.handleResponse(response);
+    return await response.json();
+  }
+
   async handleResponse(response) {
     if (!response.ok) {
       const code = response.status;
@@ -147,6 +163,21 @@ class FilesService {
       throw new Error("Unable to save successfully, see console");
     }
   }
+
+  async deleteFile(filepath, editable = true) {
+    if (!filepath) {
+      throw new Error("Cannot delete file without its name");
+    }
+
+    const response = await new FetchAPI().delete('/files/' + filepath, { 'editable': editable });
+    if (response.name && response.deleted) {
+      console.log(`File [${response.name}] Deleted [${response.deleted}]`);
+    } else {
+      throw new Error(`Unable to delete File [${response.name}] Deleted [${response.deleted}]`);
+    }
+
+    return response;
+  }
 }
 
 class LLMParamsService {
@@ -183,17 +214,31 @@ class LLMParamsService {
     }
   }
 
-  async saveParams(params) {
-    if (!params) {
+  async saveParams(paramsnp) {
+    if (!paramsnp) {
       throw new Error(`Cannot save null LLMParams.`);
     }
 
-    const response = await new FetchAPI().put('/params/' +params.llmID, params.toJSON());
+    const response = await new FetchAPI().put('/params/' +paramsnp.params.llmID, paramsnp.toJSON());
     if (response.llmID && response.count) {
       return response;
     } else {
       console.log(`Incomplete Save Params response [${JSON.stringify(response)}]`);
       throw new Error("Unable to save params successfully, see console");
+    }
+  }
+
+  async deleteParam(paramSnap) {
+    if (!paramSnap || !paramSnap.hash) {
+      throw new Error(`Cannot delete null LLMParams.`);
+    }
+
+    const response = await new FetchAPI().delete('/params/' + paramSnap.hash);  // no Query, no Body
+    if (response.deleted > 0) {
+      return response;
+    } else {
+      console.log(`Unable to delete Param. Response [${JSON.stringify(response)}]`);
+      throw new Error("Unable to delete param successfully, see console");
     }
   }
 }
