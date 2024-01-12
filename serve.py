@@ -100,7 +100,8 @@ prompt = PromptTemplate(
 
 gem_llm = ChatGoogleGenerativeAI(model="gemini-pro", convert_system_message_to_human=True)
 
-category_chain = prompt | gem_llm | CommaSeparatedListOutputParser()
+#category_chain = prompt | gem_llm | CommaSeparatedListOutputParser()
+category_chain = prompt | gem_llm
 
 add_routes(
     app,
@@ -206,4 +207,4 @@ if __name__ == "__main__":
     #checkEnviron()
 
     #uvicorn.run(app, host="localhost", port=8000, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
-    uvicorn.run(app, host="localhost", port=8000)
+    uvicorn.run(app, host="localhost", port=9000)
