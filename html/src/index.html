@@ -19,20 +19,24 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
 
   <!-- Ace Code Editor CSS https://ace.c9.io/ -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/css/ace.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/css/ace.min.css">
 
   <!-- Vanilla Tree Viewer CSS https://github.com/abhchand/vanilla-tree-viewer -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/main.min.css">
 
-  <!-- JQuery Datatables https://datatables.net/ with Fixed Headers -->
+  <!-- JQuery Datatables https://datatables.net/ bootstrap 5 with Fixed Headers -->
   <link href="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.css" rel="stylesheet">
   <link href="https://cdn.datatables.net/fixedheader/3.4.0/css/fixedHeader.dataTables.min.css" rel="stylesheet">
+  <!-- JQuery Datatables Select and Buttons extensions -->
+  <link href="https://cdn.datatables.net/select/1.7.0/css/select.dataTables.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css" rel="stylesheet">
 
   <script src="https://cdn.jsdelivr.net/npm/dompurify@2.3.1/dist/purify.min.js" 
   integrity="sha256-KdvRHbUkGfNAhivKG07QTVYUPMza4mpYMPAUBnO04Zo=" crossorigin="anonymous"></script>
 
   <!--build:css css/styles.css -->
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/tree.css" />
   <!-- endbuild -->
 </head>
 
@@ -69,6 +73,17 @@
               <li><a class="dropdown-item" href="#diagrams/class">Class Diagrams</a></li>
               <li><a class="dropdown-item" href="#diagrams/sequence">Sequence Diagrams</a></li>
               <li><a class="dropdown-item" href="#diagrams/dataflow">Data Flow Diagrams</a></li>
+            </ul>
+          </li>
+          <li class="nav-item dropdown col-6 col-md-auto">
+            <a class="nav-link dropdown-toggle disabled" href="#" id="agentDropdown" role="button" 
+              data-bs-toggle="dropdown" aria-expanded="false">
+              Agent
+            </a>
+            <ul class="dropdown-menu" aria-labelledby="agentDropdown">
+              <li><a class="dropdown-item" href="#agent/config">Config</a></li>
+              <li><a class="dropdown-item" href="#agent/control">Control</a></li>
+              <li><a class="dropdown-item" href="#agent/batch">Batch</a></li>
             </ul>
           </li>
           <li class="nav-item col-6 col-md-auto">
@@ -125,13 +140,17 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" 
     integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
   
-  <!-- JQuery Datatables https://datatables.net/ with Fixed Headers -->
+  <!-- JQuery Datatables https://datatables.net/ bootstrap 5 with Fixed Headers, select and buttons -->
   <script src="https://cdn.datatables.net/v/bs5/dt-1.13.8/datatables.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.2/moment.min.js"></script>
   <script src="https://cdn.datatables.net/fixedheader/3.4.0/js/dataTables.fixedHeader.min.js"></script>
+  <script src="https://cdn.datatables.net/select/1.7.0/js/dataTables.select.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
 
   <!--build:js index.js type="module"-->
   <script type="module" src="index.js"></script>
+  <script src="js/tree.js"></script>
   <!-- endbuild -->
 
 </body>

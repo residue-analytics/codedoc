@@ -52,6 +52,18 @@ var routes = [
     renderURL("diagrams/dataflow");
     activateNavLink(match.url);
   }, authBeforeHook],
+  ["agent/config", async (match) => {
+    renderURL("agent/config");
+    activateNavLink(match.url);
+  }, authBeforeHook],
+  ["agent/control", async (match) => {
+    renderURL("agent/control");
+    activateNavLink(match.url);
+  }, authBeforeHook],
+  ["agent/batch", async (match) => {
+    renderURL("agent/batch");
+    activateNavLink(match.url);
+  }, authBeforeHook],
   ["cleanup", async (match) => {
     renderURL("cleanup");
     activateNavLink(match.url);
@@ -311,14 +323,15 @@ async function loadModuleAndCallLayout(node) {
     if (nodeScriptIs(children[i]) === true) {
       if (children[i].type == "module") {
         //console.log(children[i]);
+        let moduleSrc = children[i].src;
         try {
-          let mod = await import(children[i].src)
-          console.log("Loaded module [" + children[i].src + "]");
+          let mod = await import(moduleSrc);
+          console.log("Loaded module [" + moduleSrc + "]");
           //console.log(mod);
           mod.default.setLayout();
         } catch (err) {
           console.log(err);
-          console.log("Unable to Load module [" + children[i].src + "]");
+          console.log("Unable to Load module [" + moduleSrc + "]");
         }
       } else {
         //console.log("Skipping loading [" + children[i].src + "] with type [" + children[i].type + "]");

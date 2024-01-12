@@ -56,6 +56,7 @@ class File(BaseModel):
 class LLMParamsSnap(BaseModel):
     tm: int
     user: str
+    purpose: str
     hash: str
     params: LLMParams
 

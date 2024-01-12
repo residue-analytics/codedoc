@@ -3,6 +3,7 @@
 __version__ = "0.1"
 __author__  = "Shalin Garg"
 
+import os
 from typing import Any, Dict, List, Mapping, Optional
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
@@ -12,10 +13,38 @@ from langchain.pydantic_v1 import Extra, root_validator
 from langchain.utils import get_from_dict_or_env
 from gradio_client import Client
 
-__all__ = ["HuggingFaceSpaces"]
+__all__ = ["EnvVars", "HuggingFaceSpaces"]
 
 DEFAULT_REPO_ID = "gpt2"
 VALID_TASKS = ("text2text-generation", "text-generation", "summarization")
+
+class EnvVars:
+    @classmethod
+    def checkEnviron(cls, provider:str):
+        res = True
+        if provider == "AzureOpenAI":
+            res &= cls.checkVar("OPENAI_API_TYPE", provider)
+            res &= cls.checkVar("OPENAI_API_VERSION", provider)
+            res &= cls.checkVar("OPENAI_API_BASE", provider)
+            res &= cls.checkVar("OPENAI_API_KEY", provider)
+        elif provider == "OpenAI":
+            res &= cls.checkVar("OPENAI_API_KEY", provider)
+        elif provider == "AzureChatOpenAI":
+            res &= cls.checkVar("AZURE_OPENAI_API_KEY", provider)
+            res &= cls.checkVar("AZURE_OPENAI_ENDPOINT", provider)
+            res &= cls.checkVar("OPENAI_API_VERSION", provider)
+            res &= cls.checkVar("AZURE_DEPLOYMENT_NAME", provider)
+        elif provider == "ChatGeminiPro":
+            res &= cls.checkVar("GOOGLE_API_KEY", provider)
+        
+        return res
+    
+    @classmethod
+    def checkVar(cls, varname:str, provider:str):
+        if (os.getenv(varname)) is None:
+            print(f"Env Var [{varname}] is required for provider [{provider}]")
+            return False
+        return True
 
 
 class HuggingFaceSpaces(LLM):

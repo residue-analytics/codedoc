@@ -1,41 +1,59 @@
-import { VanillaEditor } from "../js/editors.js";
+import { VanillaEditor, AceEditorWithTree } from "../js/editors.js";
 import { FilesService } from "../js/services.js";
-import { AppGlobals } from "../js/utils.js";
+import { AppGlobals, UIUtils } from "../js/utils.js";
+import { FileTree } from "../js/models.js";
 
 class PageGlobals {
     constructor() {
-      this.cleanupEditor = null;
+        this.cleanupEditor = null;
     }
 
     destroy() {
         this.cleanupEditor = null;
     }
 
-    setCleanupEditor(editorID) {
-        this.cleanupEditor = new VanillaEditor(editorID);
-        this.cleanupEditor.setupListenerOnRoot((name, type) => {
-            if (type == 'file') {
-                confirm("Pseudo-Delete this File [" + name + "]");
+    async setCleanupEditor(treeID, editorID) {
+      this.cleanupEditor = new AceEditorWithTree(treeID, editorID);
+      await this.loadCleanupEditor();
+
+      this.cleanupEditor.setupSelectListener((name, type) => {
+        if (type == AceEditorWithTree.FILE) {
+            if (confirm("Delete this File [" + name + "]")) {
+                new FilesService().deleteFile(name, true)
+                .then(resp => {
+                    if (resp) {
+                        UIUtils.showAlert('erroralert', `Deleted [${resp.name}]`); 
+                        this.cleanupEditor.removeCurActive();
+                    }
+                })
+                .catch(err => {
+                   UIUtils.showAlert('erroralert', `Unable to delete file [${name}] due to [${err}]`);
+                });
             }
-            console.log(`Clicked on [${name}] of type [${type}]`);
-        });
+        }
+        //console.log(`Clicked on [${name}] of type [${type}]`);
+      });
     }
-    
-    async loadCleanupEditor() {
+
+    async loadCleanupEditor(reload=false) {
         // Populate the input directory tree in the editor
         try {
-            new FilesService().getFiles(null, true).then(
-                fileList => VanillaEditor.initialize("cleanupEditor", fileList, true)
+            await new FilesService().getFiles(null, true).then(
+                fileList => {
+                    if (reload) {
+                      this.cleanupEditor.reloadTree(fileList);
+                    } else {
+                      this.cleanupEditor.initialize(fileList);
+                    }
+                }
             );
-        } catch (err) {
+          } catch (err) {
             console.log(err);
-        }
+          }
     }
 }
 
 let globals = null;
-
-//setLayout();
 
 function resdestroy() {
     //console.log("Destroying cleanup");
@@ -46,23 +64,43 @@ function resdestroy() {
 function setLayout() {
     globals = new PageGlobals();
 
-    //console.log("Layout setup for cleanup");
     AppGlobals.instance.pageDestroy = resdestroy;
 
-    let mainDiv = document.getElementById("MainDiv");
-    
+    globals.setCleanupEditor("cleanupTree", "cleanupEditor");
+
     //<!-- Vanilla Tree Viewer -->
-    let edtScript = document.createElement("script");
-    edtScript.src = "https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js";
-    edtScript.onload = editor1setup;
-    mainDiv.appendChild(edtScript);
+    //let edtScript = document.createElement("script");
+    //edtScript.src = "https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js";
+    //edtScript.onload = editor1setup;
+    //mainDiv.appendChild(edtScript);
 }
 
-function editor1setup() {
+    /* setCleanupEditor(editorID) {
+        this.cleanupEditor = new VanillaEditor(editorID);
+        this.cleanupEditor.setupListenerOnRoot((name, type) => {
+            if (type == 'file') {
+                if (confirm("Delete this File [" + name + "]")) {
+                    new FilesService().deleteFile(name, true)
+                    .then(resp => {
+                        if (resp) {
+                            UIUtils.showAlert('erroralert', `Deleted [${resp.name}]`); 
+                            this.cleanupEditor.strikeThroughTreeNode(name, type);
+                        }
+                    })
+                    .catch(err => {
+                       UIUtils.showAlert('erroralert', `Unable to delete file [${name}] due to [${err}]`);
+                    });
+                }
+            }
+            //console.log(`Clicked on [${name}] of type [${type}]`);
+        });
+    } */
+    
+//function editor1setup() {
     //console.log("cleanup editor setup");
-    VanillaTreeViewer.renderAll();
-    globals.setCleanupEditor("cleanupEditor");
-    globals.loadCleanupEditor();
-}
+//    VanillaTreeViewer.renderAll();
+//    globals.setCleanupEditor("cleanupEditor1");
+//    globals.loadCleanupEditor();
+//}
 
 export default { resdestroy, setLayout };

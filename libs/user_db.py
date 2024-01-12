@@ -28,16 +28,17 @@ class UserCredentials:
         return f"User ID [{self.user_id}] Username [{self.username}] Pass [{self.password}]"
 
 class LLMParamsRec:
-    def __init__(self, name, user_id, timestamp, data, data_hash=None):
+    def __init__(self, name, user_id, timestamp, purpose, data, data_hash=None, type='llm_params'):
         self.tm = timestamp
         self.name = name            # Like LLM ID or something on which a query is needed
         self.user_id = user_id
-        self.type = 'llm_params'
+        self.type = type
+        self.purpose = purpose
         self.data = data
         self.data_hash = data_hash
 
     def toString(self):
-        return f"llmID [{self.name}] Type [{self.type}] User [{self.user_id}] TS [{self.tm}] Data [{self.data}] Hash[{self.data_hash}]"
+        return f"llmID [{self.name}] Type [{self.type}] User [{self.user_id}] TS [{self.tm}] PP [{self.purpose}] Data [{self.data}] Hash[{self.data_hash}]"
     
     def toDict(self):
         return {
@@ -45,6 +46,7 @@ class LLMParamsRec:
             'name': self.name,
             'user_id': self.user_id,
             'type': self.type,
+            'purpose': self.purpose,
             'data': self.data,
             'data_hash': self.data_hash
         }
@@ -193,6 +195,7 @@ class ParamsDatabase:
                 type TEXT,
                 user_id INTEGER,
                 name TEXT,
+                purpose TEXT,
                 data TEXT,
                 hash TEXT,
                 FOREIGN KEY (user_id) REFERENCES users (id)
@@ -230,9 +233,9 @@ class ParamsDatabase:
     def add_params(self, params):
         hash_data = self.hash_data(params.data)
         if not self.check_hash_exists(params.user_id, hash_data):
-            self.cursor.execute("INSERT INTO params ('tm', 'type', 'user_id', 'name', 'data', 'hash') VALUES (?, ?, ?, ?, ?, ?)", 
+            self.cursor.execute("INSERT INTO params ('tm', 'type', 'user_id', 'name', 'purpose', 'data', 'hash') VALUES (?, ?, ?, ?, ?, ?, ?)", 
                             (params.tm, params.type, params.user_id, params.name, 
-                             params.data, hash_data))
+                             params.purpose, params.data, hash_data))
             self.conn.commit()
 
     def add_params_by_username(self, params, username):
@@ -259,9 +262,9 @@ class ParamsDatabase:
             self.cursor.execute('SELECT * FROM params WHERE user_id = ? AND name = ? ORDER BY tm DESC LIMIT 1', (user_id, name))
             row = self.cursor.fetchone()
             if row:
-                tm, type, user_id, name, data, hash = row
+                tm, type, user_id, name, purpose, data, hash = row
                 if type == "llm_params":
-                    return LLMParamsRec(name, user_id, tm, data, hash)
+                    return LLMParamsRec(name, user_id, tm, purpose, data, hash, type)
         return None
                 
     def get_params_by_userid(self, user_id):
@@ -269,9 +272,9 @@ class ParamsDatabase:
         rows = self.cursor.fetchall()
         param_list = []
         for row in rows:
-            tm, type, user_id, name, data, hash = row
+            tm, type, user_id, name, purpose, data, hash = row
             if type == "llm_params":
-                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
+                param_list.append(LLMParamsRec(name, user_id, tm, purpose, data, hash, type))
         
         if len(param_list) > 0:
             return param_list
@@ -283,9 +286,9 @@ class ParamsDatabase:
         rows = self.cursor.fetchall()
         param_list = []
         for row in rows:
-            tm, type, user_id, name, data, hash = row
+            tm, type, user_id, name, purpose, data, hash = row
             if type == "llm_params":
-                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
+                param_list.append(LLMParamsRec(name, user_id, tm, purpose, data, hash, type))
         
         if len(param_list) > 0:
             return param_list
@@ -297,9 +300,9 @@ class ParamsDatabase:
         rows = self.cursor.fetchall()
         param_list = []
         for row in rows:
-            tm, type, user_id, name, data, hash = row
+            tm, type, user_id, name, purpose, data, hash = row
             if type == "llm_params":
-                param_list.append(LLMParamsRec(name, user_id, tm, data, hash))
+                param_list.append(LLMParamsRec(name, user_id, tm, purpose, data, hash, type))
         
         if len(param_list) > 0:
             return param_list
@@ -314,14 +317,20 @@ class ParamsDatabase:
             row = self.cursor.fetchone()
             return row[0]
         return 0
-        
-    def delete_param(self, tm, user_id):
-        self.cursor.execute('DELETE FROM params WHERE tm = ? AND user_id = ?', (tm, user_id))
+    
+    def delete_param(self, username, data_hash):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        self.cursor.execute('DELETE FROM params WHERE user_id = ? AND hash = ?', (user_id, data_hash))
         self.conn.commit()
+        return self.cursor.rowcount
 
-    def delete_all_params(self, user_id):
+    def delete_all_params(self, username):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
         self.cursor.execute('DELETE FROM params WHERE user_id = ?', (user_id))
         self.conn.commit()
+        return self.cursor.rowcount
 
     def hash_data(self, data:str):
         return hashlib.sha256(data.encode()).hexdigest()

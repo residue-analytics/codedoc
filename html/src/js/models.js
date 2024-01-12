@@ -85,7 +85,7 @@ class ModelList {
     return this.modelList.find((model) => model.code == code);
   }
 
-  findByNmae(name) {
+  findByName(name) {
     // return undefined if not found
     return this.modelList.find((model) => model.name == name);
   }
@@ -131,9 +131,10 @@ class LLMParams {
 }
 
 class LLMParamsSnap {
-  constructor(tm=null, user="", hash="", params=None) {
+  constructor(tm=null, user="", purpose="", hash="", params=None) {
     this.tm = tm;
     this.user = user;
+    this.purpose = purpose;
     this.hash = hash;
     this.params = params;
   }
@@ -142,6 +143,7 @@ class LLMParamsSnap {
     return {
       tm: this.tm,
       user: this.user,
+      purpose: this.purpose,
       hash: this.hash,
       params: this.params.toJSON(),
     };
@@ -151,6 +153,7 @@ class LLMParamsSnap {
     return new LLMParamsSnap(
       json.tm, 
       json.user, 
+      json.purpose,
       json.hash, 
       LLMParams.fromJSON(json.params)
     );
@@ -271,6 +274,50 @@ class User {
   }
 }
 
+class FileTree {
+  constructor(strList) {
+    // [ "file1", "file2", "dir1/dir2/c", "dir1/d", "dir1/e" ]
+    this.filePathList = strList;
+    this.tree = {};
+    this.buildTree();
+  }
+
+  buildTree() {
+    for (let path of this.filePathList) {
+      let pathParts = path.split('/');
+      let currentLevel = this.tree;
+      
+      while (pathParts.length) {
+        let part = pathParts.shift();
+        
+        if (!currentLevel[part]) {
+            currentLevel[part] = {};
+        }
+        
+          currentLevel = currentLevel[part];
+      }
+    }
+  }
+
+  getFormattedTreejs() {
+    return this.convertToTreejsFormat(this.tree);
+  }
+
+  convertToTreejsFormat(obj) {
+    return Object.keys(obj).map(key => {
+        if (Object.keys(obj[key]).length) {
+            return {
+                name: key,
+                type: 'folder',
+                children: this.convertToTreejsFormat(obj[key])
+            };
+        } else {
+            return { name: key };
+        }
+    });
+  }
+}
+
 class GlobalData {
   constructor() {
     this._usr = "guest";
@@ -315,4 +362,4 @@ class GlobalData {
 }
 
 
-export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, CodeFileCache, User, GlobalData }
+export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, CodeFileCache, User, GlobalData, FileTree }

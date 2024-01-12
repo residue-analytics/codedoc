@@ -1,5 +1,6 @@
 cryptography
 uvicorn[standard]
+sse_starlette
 fastapi
 langchain
 langserve
@@ -11,3 +12,4 @@ python-jose[cryptography]
 passlib[bcrypt]
 langchain-google-genai
 pillow
+pip-system-certs

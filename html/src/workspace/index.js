@@ -1,8 +1,8 @@
 
-import { Model, ModelKwargs, LLMParams, ModelList } from "../js/models.js";
-import { WebError, ModelService, FilesService, LLMService, LLMParamsService, LoginService } from "../js/services.js";
+import { LLMParams, LLMParamsSnap, FileTree } from "../js/models.js";
+import { ModelService, FilesService, LLMService, LLMParamsService } from "../js/services.js";
 import { VanillaEditor, AceEditor } from "../js/editors.js";
-import { UIUtils, AppGlobals } from "../js/utils.js";
+import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
 
 class LLMParamUIPair {
   constructor(btnID, elemID, type, updateBadge=true, dualParent=false) {
@@ -43,6 +43,10 @@ class LLMParamUIPair {
 
   setValue(value) {
     this.elem.value = value;
+  }
+
+  addToValue(value) {
+    this.elem.value += value;
   }
 
   disable() {
@@ -169,6 +173,10 @@ class LLMParamsUI {
       this.topkLLMParam.setValue(kwargs.topk);
     }
   }
+
+  addToContextParam(text) {
+    this.ctxParam.enabled() ? this.ctxParam.addToValue(text) : null;
+  }
 }
 
 class PageGlobals {
@@ -208,6 +216,7 @@ class PageGlobals {
 
   setModelOutputEditor(editorID) {
     this.outputEditor = new AceEditor(editorID);
+    this.outputEditor.useWordWrap(true);
   }
 
   setLLModels(selectorID) {
@@ -229,7 +238,11 @@ class PageGlobals {
   async loadReadOnlyEditor() {
     // Populate the input directory tree in the read only editor
     try {
-      await new FilesService().getFiles().then(fileList => VanillaEditor.initialize("editor1", fileList));
+      await new FilesService().getFiles().then(fileList => { 
+        VanillaEditor.initialize("editor1", fileList);
+        let tree = new FileTree(fileList);
+        console.log(tree.getFormattedTree());
+      });
     } catch (err) {
       console.log(err);
     }
@@ -240,7 +253,7 @@ class PageGlobals {
     this.setLLModels("ModelSelector");
   }
 
-  saveLLMParams() {
+  async saveLLMParams() {
     let params = this.llmParamsUI.getLLMParams();
     if (!params) {
       UIUtils.showAlert("erroralert", `Unable to save Params for [${params}]`);
@@ -252,33 +265,51 @@ class PageGlobals {
     let oldParams = sessionStorage.getItem(params.llmID);
     let newParams = JSON.stringify(params.toJSON());
     if (oldParams != newParams) {
-      
-      console.log(`Params for [${params.llmID}] saved locally`);
-      new LLMParamsService().saveParams(params).then(resp => {
+      let purpose=$("#ParamsPurposeModalText").val();  // Get purpose from the modal textarea
+      new LLMParamsService().saveParams(
+        new LLMParamsSnap(Date.now(), (await UsersManager.getLoggedInUser()).fullname, purpose, "", params)
+      )
+      .then(resp => {
           UIUtils.showAlert("erroralert", `Saved [${resp.llmID}] with count [${resp.count}] on server`);
           sessionStorage.setItem(params.llmID, newParams);
-      }).catch(err => UIUtils.showAlert("erroralert", `Unable to save [${params.llmID}], err [${err}]`));
+          $("#ParamsPurposeModalText").val("");
+          console.log(`Params for [${params.llmID}] saved locally`);
+      })
+      .catch(
+        err => UIUtils.showAlert("erroralert", `Unable to save [${params.llmID}], err [${err}]`)
+      );
     } else {
       UIUtils.showAlert("erroralert", `Nothing new to save for [${params.llmID}]`);
     }
   }
 
   showLLMParamsHistory() {
-    new LLMParamsService().getAllParamsHistory().then(history => {
+    new LLMParamsService().getAllParamsHistory()
+    .then(history => {
       //console.log(history);
       UIUtils.showAlert("erroralert", `Received [${history.records.length}] reocrds from server`);
 
       $("#ParamsHistoryModal .modal-body").append('<table id="ParamsHistoryTable" class="table table-sm table-bordered" style="width:100%"></table>');
       
+      const histModal = new bootstrap.Modal("#ParamsHistoryModal");
+      histModal.show();
+
       const dataTable = $("#ParamsHistoryTable").DataTable({
+        dom: 'Bfrtip',
         destroy: true,
         data: history.records,   // Array of JSON flat objects, not LLMParams Model objects
         scrollX: true,
         fixedHeader: true,
+        select: {
+          items: 'row',
+          style: 'single',
+          toggleable: true
+        },
         columns: [
           { data: "tm", title: 'Timestamp' },
           { data: "user", title: 'User Name' },
           { data: "params.llmID", title: 'LLM ID' },
+          { data: "purpose", title: 'Purpose' },
           { data: "params.system_prompt", title: 'System Prompt' },
           { data: "params.user_prompt", title: 'User Prompt' },
           { data: "params.temperature", title: 'T' },
@@ -286,16 +317,90 @@ class PageGlobals {
           { data: "params.repetition_penalty", title: 'Rep Pen' },
           { data: "params.presence_penalty", title: 'Prsnc Pen' },
           { data: "params.max_new_tokens", title: 'Max Toks' },
+          //{ data: null, defaultContent: '<a href="#/" title="Copy Params" class="text-danger bi bi-box-arrow-in-left"></a> <a href="#/" title="Delete" class="text-danger bi bi-trash"></a>' },
         ],
         columnDefs: [
-          { targets: 0, render: DataTable.render.datetime() }
+          { targets: 0, render: DataTable.render.datetime() },
+          { targets: 2, render: function (data, type, row, meta) { 
+              //console.log(data + " " + type + " " + row.params.llmID);
+              return globals.models.findByID(data).name;
+            }
+          }
+        ],
+        language: {
+          select: {
+            rows: {
+              _: "Selected %d rows",
+              0: "Click a row to select it",
+              1: "Selected 1 row"
+            }
+          }
+        },
+        buttons: [
+          {
+            extend: 'selectedSingle',
+            text: 'Delete Selected Params',
+            action: async function ( e, dt, node, config ) {
+              e.preventDefault();
+              try {
+                //console.log(event.currentTarget);
+                //console.log(dataTable.row(event.currentTarget));
+                let user = await UsersManager.getLoggedInUser();
+                let data = dt.row( { selected: true } ).data();
+                //console.log(data);
+                if (user.fullname != data.user) {
+                  UIUtils.showAlert('erroralert', "You don't have permissions to delete this record");
+                  return;
+                }
+
+                //if (confirm('Delete ' + data.user + "'s params for [" + data.params.llmID + "]") == true) {
+                  console.log(`Deleting Record [${data.hash}]!!`);
+                  let resp = await new LLMParamsService().deleteParam(data);
+                  UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
+                  let updatedHist = await new LLMParamsService().getAllParamsHistory();
+                  dt.clear();
+                  dt.rows.add(updatedHist.records); // Add new data
+                  dt.columns.adjust().draw(); // Redraw the DataTable
+                //}
+              } catch (err) {
+                console.log(err);
+                UIUtils.showAlert('erroralert', "Unable to delete the prompt record");
+              }
+            }
+          },
+          {
+            extend: 'selectedSingle',
+            text: 'Load Selected Params',
+            action: function ( e, dt, node, config ) {
+              e.preventDefault();
+              try {
+                let data = dt.row({ selected: true }).data();
+                
+                //if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID +
+                //  "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
+                    console.log("Approved application!!");
+                    globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
+                //}
+              } catch(err) {
+                console.log(err);
+                UIUtils.showAlert('erroralert', "Unable to load the prompt record");
+              }
+            }
+          },
+          //'selectNone'  // Button to deselect all selected rows
         ]
       });
 
-      dataTable.on('click', 'tbody tr', (event) => {
+      dataTable.on('init.dt', () => {
+        console.log("Table inited");
+      });
+
+      /**
+      dataTable.on('click', 'tbody a.bi-box-arrow-in-left', (event) => {
+        event.preventDefault();
         //console.log(event.currentTarget);
         //console.log(dataTable.row(event.currentTarget));
-        let data = dataTable.row(event.currentTarget).data();
+        let data = dataTable.row(event.currentTarget.parentElement.parentElement).data();
         //console.log(data);
         if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID + 
                     "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
@@ -305,13 +410,32 @@ class PageGlobals {
         }
       });
 
-      dataTable.on('init.dt', () => {
-        console.log("Table inited");
-      });
+      dataTable.on('click', 'tbody a.bi-trash', async (event) => {
+        try {
+          event.preventDefault();
+          //console.log(event.currentTarget);
+          //console.log(dataTable.row(event.currentTarget));
+          let user = await UsersManager.getLoggedInUser();
+          let data = dataTable.row(event.currentTarget.parentElement.parentElement).data();
+          //console.log(data);
+          if (user.fullname != data.user) {
+            UIUtils.showAlert('erroralert', "You don't have permissions to delete this record");
+            return;
+          }
 
-      const histModal = new bootstrap.Modal("#ParamsHistoryModal");
-      histModal.show();
-    });
+          if (confirm('Delete ' + data.user + "'s params for [" + data.params.llmID + "]") == true) {
+            console.log(`Deleting Record [${data.hash}]!!`);
+            let resp = await new LLMParamsService().deleteParam(data);
+            UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
+          }
+        } catch (err) {
+          console.log(err);
+          UIUtils.showAlert('erroralert', "Unable to delete the prompt record");
+        }
+      });
+      */
+    })
+    .catch(err => UIUtils.showAlert('erroralert', `Unable to get Params [${err}]`));
   }
 
   async getSavedLLMParams(modelID) {
@@ -378,7 +502,12 @@ async function setLayout() {
     globals.llmParamsUI.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', 'number', true, true);
 
     document.getElementById('SaveParams').addEventListener('click', function () {
-        globals.saveLLMParams();
+      const histModal = new bootstrap.Modal("#ParamsPurposeModal");
+      histModal.show();
+    });
+
+    $("#ParamsPurposeModal .modal-footer .btn").on('click', function() {
+      globals.saveLLMParams();
     });
 
     document.getElementById('ShowParamsHistory').addEventListener('click', function () {
@@ -393,15 +522,44 @@ async function setLayout() {
         globals.editor.discardChanges();
     });
 
+    document.getElementById('Beautify').addEventListener('click', function () {
+      globals.editor.beautify();
+    });
+
+    document.getElementById('WordWrap').addEventListener('click', function () {
+      globals.editor.toggleWordWrap();
+    });
+
+    document.getElementById('UndoFile').addEventListener('click', function () {
+      globals.editor.undo();
+    });
+
+    document.getElementById('RedoFile').addEventListener('click', function () {
+      globals.editor.redo();
+    });
+    
+    document.getElementById('FileToCtx').addEventListener('click', function (event) {
+      globals.llmParamsUI.addToContextParam(globals.editor.getCode());
+    });
+
+    document.getElementById('SelectionToCtx').addEventListener('click', function (event) {
+      globals.llmParamsUI.addToContextParam(globals.editor.getSelectedCode());
+    });
+
     document.getElementById('SaveFile').addEventListener('click', function () {
         try {
             UIUtils.addSpinnerToIconButton('SaveFile');
-            new FilesService().saveFile(globals.editor.getCurFile()).then((codeFile) => {
+            new FilesService().saveFile(globals.editor.getCurFile())
+              .then((codeFile) => {
                 UIUtils.rmSpinnerFromIconButton('SaveFile');
                 codeFile.content = globals.editor.getCode();
                 globals.editor.curFileSavedSuccessfully(codeFile);
                 UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}]`);
-            });
+              })
+              .catch((err) => {
+                UIUtils.rmSpinnerFromIconButton('SaveFile');
+                UIUtils.showAlert("erroralert", err);
+              });
         } catch (err) {
             UIUtils.rmSpinnerFromIconButton('SaveFile');
             UIUtils.showAlert("erroralert", err);
