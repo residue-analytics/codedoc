@@ -8,6 +8,8 @@ from sys                 import exit
 import ssl
 import os
 import copy
+import uvicorn
+import argparse
 
 from typing import List
 from typing import Annotated
@@ -38,6 +40,21 @@ from libs                import files
 from libs                import params
 from libs.params         import MODELS
 
+   
+parser = argparse.ArgumentParser(description="Start the Code Documentation Tool Server")
+parser.add_argument("--idir", default='./oldcode', help="Directory containing code being documented, read only copy")
+parser.add_argument("--odir", default="./newcode", help="Directory to save modified code")
+parser.add_argument("--html", default="./html/src", help="Static Content directory path")
+parser.add_argument("--port", type=int, default="8000", help="Port to listen on")
+
+args = parser.parse_args()
+
+files.INPUT_CODE_DIR = args.idir
+files.OUTPUT_CODE_DIR = args.odir
+
+#checkEnviron()
+
+#uvicorn.run(app, host="localhost", port=8000, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
 
 class CommaSeparatedListOutputParser(BaseOutputParser[List[str]]):
     """Parse the output of an LLM call to a comma-separated list."""
@@ -79,7 +96,7 @@ app = FastAPI(
 )
 
 # To serve static files from /html directory
-app.mount("/html", StaticFiles(directory="./html/src", html=True), name="html")
+app.mount("/html", StaticFiles(directory=args.html, html=True), name="html")
 app.include_router(auth.router)
 app.include_router(files.router)
 app.include_router(params.router)
@@ -201,10 +218,5 @@ def checkEnviron():
     if not res:
         exit(1)
 
-if __name__ == "__main__":
-    import uvicorn
-    
-    #checkEnviron()
 
-    #uvicorn.run(app, host="localhost", port=8000, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
-    uvicorn.run(app, host="localhost", port=9000)
+uvicorn.run(app, host="0.0.0.0", port=args.port)

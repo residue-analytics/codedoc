@@ -12,7 +12,7 @@ from fastapi.responses   import FileResponse
 from libs.data           import File
 from libs.auth           import get_current_active_user, User
 
-__all__ = ["router"]
+__all__ = ["router", "INPUT_CODE_DIR", "OUTPUT_CODE_DIR"]
 
 INPUT_CODE_DIR = "./oldcode"
 OUTPUT_CODE_DIR = "./newcode"

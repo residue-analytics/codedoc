@@ -13,3 +13,11 @@ passlib[bcrypt]
 langchain-google-genai
 pillow
 pip-system-certs
+num2words 
+matplotlib 
+plotly 
+scipy 
+scikit-learn 
+pandas 
+tiktoken
+esprima
