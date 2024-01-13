@@ -241,7 +241,7 @@ class PageGlobals {
       await new FilesService().getFiles().then(fileList => { 
         VanillaEditor.initialize("editor1", fileList);
         let tree = new FileTree(fileList);
-        console.log(tree.getFormattedTree());
+        console.log(tree.getFormattedTreejs());
       });
     } catch (err) {
       console.log(err);

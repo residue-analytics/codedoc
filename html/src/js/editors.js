@@ -176,7 +176,13 @@ class AceEditor {
     const id_editor = editor.container.id;
     const id_dragbar = '#' + id_editor + '_dragbar';
     const id_wrapper = '#' + id_editor + '_wrapper';
-    let wpoffset = 0;
+    const id_toolbar = '#' + id_editor + '_toolbar';
+    
+    let toolbar_height = 0;
+    if ($(id_toolbar).length) {
+      toolbar_height = $(id_toolbar).height();
+    }
+
     window.draggingAceEditor[id_editor] = false;
 
     $(id_dragbar).mousedown(function (e) {
@@ -185,19 +191,20 @@ class AceEditor {
       window.draggingAceEditor[id_editor] = true;
 
       const _editor = $('#' + id_editor);
-      const top_offset = _editor.offset().top - wpoffset;
+      const top_offset = _editor.offset().top;
 
       // Set editor opacity to 0 to make transparent so our wrapper div shows
       _editor.css('opacity', 0);
 
       // handle mouse movement
       $(document).mousemove(function (e) {
-        const actualY = e.pageY - wpoffset;
+        const actualY = e.pageY;
+        
         // editor height
         const eheight = actualY - top_offset;
 
         // Set wrapper height
-        $(id_wrapper).css('height', eheight);
+        $(id_wrapper).css('height', eheight + toolbar_height);
 
         // Set dragbar opacity while dragging (set to 0 to not show)
         $(id_dragbar).css('opacity', 0.15);
@@ -208,8 +215,8 @@ class AceEditor {
       if (window.draggingAceEditor[id_editor]) {
         const ctx_editor = $('#' + id_editor);
 
-        const actualY = e.pageY - wpoffset;
-        const top_offset = ctx_editor.offset().top - wpoffset;
+        const actualY = e.pageY;
+        const top_offset = ctx_editor.offset().top;
         const eheight = actualY - top_offset;
 
         $(document).unbind('mousemove');

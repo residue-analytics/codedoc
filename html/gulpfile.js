@@ -37,6 +37,11 @@ function copyJS() {
     .pipe(dest('staging'));
 }
 
+function copyCSS() {
+  return src('src/**/*.css')
+    .pipe(dest('staging'));
+}
+
 function copyImages() {
   return src('src/**/*.+(png|jpg|jpeg|gif|svg|ico)')
     .pipe(dest('dist'));
@@ -61,11 +66,6 @@ function jsMinify(cb) {
     .pipe(dest('dist', { sourcemaps: '.' }));
 }
 
-function crtCopies() {
-  return src('dist/strategy/**/*')
-    .pipe(dest('dist/live'));
-}
-
 function bundle() {
   return src('dist/**')
     .pipe(targz.create('codedoc-dist.zip'))
@@ -81,6 +81,7 @@ exports.build = series(
   parallel(
     convertHTML,
     copyJS,
+    copyCSS,
     copyImages,
     copyResources
   ),
@@ -89,7 +90,6 @@ exports.build = series(
     cssMinify,
     jsMinify
   ),
-  crtCopies,
   bundle,
   publish
 );
