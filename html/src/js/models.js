@@ -282,6 +282,10 @@ class FileTree {
     this.buildTree();
   }
 
+  getFilePathList() {
+    return this.filePathList;
+  }
+  
   buildTree() {
     for (let path of this.filePathList) {
       let pathParts = path.split('/');

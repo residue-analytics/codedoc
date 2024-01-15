@@ -9,6 +9,7 @@ class PageGlobals {
     }
 
     destroy() {
+        this.cleanupEditor.destroy();
         this.cleanupEditor = null;
     }
 

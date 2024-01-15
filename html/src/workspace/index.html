@@ -1,12 +1,36 @@
 <div id="MainDiv">
-  <div class="container-fluid">
-    <div class="row justify-content-left align-items-top">
-      <div id="editor1" class="col-lg-6 mb-3" style="height:400px">
+  <div class="">
+    <div class="row row-cols-1 row-cols-lg-2 justify-content-left align-items-top mx-0">
+      <div class="col mb-3">
+        <div id="editor1_toolbar" class="btn-toolbar aceeditor_cmdbar pe-0" role="toolbar" aria-label="Editor toolbar with button groups">
+          <div class="btn-group" role="group" aria-label="First group">
+            <div id="scrollable-dropdown-menu">
+              <input class="typeahead" type="text" placeholder="File Search">
+            </div>
+            <button id="ToggleTreeReadOnly" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
+              title="Toggle Directory Tree">
+              <span class="bi bi-arrow-left-right"></span>
+            </button>
+            <button id="WordWrapReadOnly" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
+              title="Use Word Wrap">
+              <span class="bi bi-text-wrap"></span>
+            </button>
+          </div>
+        </div>
+        <div>
+          <div class="row app_editor mx-0" style="max-height: 800px;">
+            <div id="editor1Tree" class="col-4 border h-100 dirtree">
+            </div>
+            <div id="editor1" class="col h-100 mb-3">
+Select a file in the folder tree view, to view it here.
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div id="editor2_wrapper" class="col-lg-6 mb-3">
-        <div id="editor2_toolbar" class="btn-toolbar aceeditor_cmdbar" role="toolbar" aria-label="Editor toolbar with button groups">
-          <div class="btn-group" role="group" aria-label="First group">
+      <div id="editor2_wrapper" class="col mb-3">
+        <div id="editor2_toolbar" class="btn-toolbar justify-content-between aceeditor_cmdbar" role="toolbar" aria-label="Editor toolbar with button groups">
+          <div class="btn-group" role="group">
             <button id="NewFile" type="button" class="btn btn-sm text-light" 
               title="Create a new file on the server"> <span class="bi bi-file-earmark-plus"></span>
             </button>
@@ -24,12 +48,22 @@
               title="Use Word Wrap">
               <span class="bi bi-text-wrap"></span>
             </button>
+            <button id="ToggleFolding" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
+              title="Toggle Code Folding">
+              <span class="bi bi-arrows-collapse"></span>
+            </button>
             <button id="Discard" type="button" class="btn btn-sm text-light"
               title="Reload last version of the file discarding all the unsaved changes">
               <span class="bi bi-file-earmark-arrow-up"></span>
             </button>
             <button id="SaveFile" type="button" class="btn btn-sm text-light" 
               title="Save the changed file as a new Version on server"> <span class="bi bi-floppy"></span>
+            </button>
+          </div>
+          <div class="btn-group" role="group">
+            <button type="button" class="btn btn-sm text-light" title="See all keyboard shortcuts, opens a new window/tab"
+              onclick="window.open('https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts')">
+              <span class="bi bi-info"></span>
             </button>
           </div>
         </div>
@@ -42,7 +76,7 @@ Select a file in the folder tree view, to edit it here.
       </div>
     </div>
 
-    <div class="row align-items-top">
+    <div class="row align-items-top mx-0">
       <div class="btn-toolbar justify-content-between" role="toolbar" aria-label="Toolbar with button groups">
         <div class="btn-group me-2 mb-3" role="group" aria-label="First group">
           <button id="ModelSelectorBtn" type="button" class="btn btn-outline-secondary btn-sm active"
@@ -117,7 +151,7 @@ Select a file in the folder tree view, to edit it here.
       </div>
     </div>
 
-    <div class="row align-items-top mb-3">
+    <div class="row align-items-top mx-0 mb-3">
       <div class="col-lg-6 mb-3">
         <form>
           <div class="mb-3">

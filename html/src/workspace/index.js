@@ -1,7 +1,7 @@
 
 import { LLMParams, LLMParamsSnap, FileTree } from "../js/models.js";
 import { ModelService, FilesService, LLMService, LLMParamsService } from "../js/services.js";
-import { VanillaEditor, AceEditor } from "../js/editors.js";
+import { AceEditor, AceEditorWithTree } from "../js/editors.js";
 import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
 
 class LLMParamUIPair {
@@ -190,9 +190,20 @@ class PageGlobals {
   }
 
   destroy() {
-    this.readOnlyEditor = null;
-    this.editor = null;
-    this.outputEditor = null;
+    $('#scrollable-dropdown-menu .typeahead').typeahead('destroy');
+    if (this.readOnlyEditor) {
+      this.readOnlyEditor.destroy();
+      this.readOnlyEditor = null;
+    }
+    if (this.editor) {
+      this.editor.destroy();
+      this.editor = null;
+    }
+    if (this.outputEditor) {
+      this.outputEditor.destroy();
+      this.outputEditor = null;
+    }
+
     this.llmSelector = null;
     this.models = null;
     this.llmParamsUI = null;
@@ -202,15 +213,28 @@ class PageGlobals {
     this.editor = new AceEditor(editorID);
   }
 
-  setReadOnlyEditor(editorID) {
-    this.readOnlyEditor = new VanillaEditor(editorID);
-    this.readOnlyEditor.setupListenerOnRoot((name, type) => {
-      if (type == 'file') {
-        this.editor.editFile(name).catch(err => {
+  async setReadOnlyEditor(treeID, editorID) {
+    this.readOnlyEditor = new AceEditorWithTree(treeID, editorID, false);  // Non-editable File / Read Only
+    await this.loadReadOnlyEditor();
+
+    this.readOnlyEditor.setupSelectListener((name, type) => {
+      if (type == AceEditorWithTree.FILE) {
+        this.editor.editFile(name).catch(err => {  // Load an editable version in the editable editor
           UIUtils.showAlert("erroralert", err);
         });
       }
       console.log(`Clicked on [${name}] of type [${type}]`);
+    });
+
+    // Setup the File Search
+    $('#scrollable-dropdown-menu .typeahead').typeahead({
+      hint: true,
+      highlight: true,
+      minLength: 1
+    }, {
+      name: 'File-Paths',
+      limit: 10,
+      source: substringMatcher(this.readOnlyEditor.tree.getPathList())
     });
   }
 
@@ -236,20 +260,19 @@ class PageGlobals {
   }
 
   async loadReadOnlyEditor() {
-    // Populate the input directory tree in the read only editor
+    // Populate the input directory tree in the editor
     try {
-      await new FilesService().getFiles().then(fileList => { 
-        VanillaEditor.initialize("editor1", fileList);
-        let tree = new FileTree(fileList);
-        console.log(tree.getFormattedTreejs());
-      });
-    } catch (err) {
-      console.log(err);
-    }
+        await new FilesService().getFiles().then(
+            fileList => {
+                  this.readOnlyEditor.initialize(fileList);
+            }
+        );
+      } catch (err) {
+        console.log(err);
+      }
   }
 
   loadDataOnMain() {
-    this.loadReadOnlyEditor();
     this.setLLModels("ModelSelector");
   }
 
@@ -483,6 +506,28 @@ function resdestroy() {
   globals = null;
 }
 
+var substringMatcher= function(strs) {
+  return function findMatches(q, cb) {
+    var matches, substrRegex;
+
+    // an array that will be populated with substring matches
+    matches = [];
+
+    // regex used to determine if a string contains the substring `q`
+    substrRegex = new RegExp(q, 'i');
+
+    // iterate through the pool of strings and for any string that
+    // contains the substring `q`, add it to the `matches` array
+    $.each(strs, function(i, str) {
+      if (substrRegex.test(str)) {
+        matches.push(str);
+      }
+    });
+
+    cb(matches);
+  };
+};
+
 async function setLayout() {
   globals = new PageGlobals();
 
@@ -510,6 +555,25 @@ async function setLayout() {
       globals.saveLLMParams();
     });
 
+    document.getElementById('ToggleTreeReadOnly').addEventListener('click', function () {
+      let dirTree = document.getElementById('editor1Tree');
+      if (dirTree.classList.contains('treeCollapsed')) {
+        dirTree.classList.remove('treeCollapsed');
+      } else {
+        dirTree.classList.add('treeCollapsed');
+      }
+    });
+
+    document.getElementById('WordWrapReadOnly').addEventListener('click', function () {
+      globals.readOnlyEditor.editor.toggleWordWrap();
+    });
+
+    $('#scrollable-dropdown-menu .typeahead').bind('typeahead:select', function(ev, suggestion) {
+      console.log('Selection: ' + suggestion);
+      globals.readOnlyEditor.showFile(suggestion);
+      window.setTimeout(() => {$('#scrollable-dropdown-menu .typeahead').typeahead('val','');}, 2000);
+    });
+
     document.getElementById('ShowParamsHistory').addEventListener('click', function () {
         globals.showLLMParamsHistory();
     });
@@ -528,6 +592,10 @@ async function setLayout() {
 
     document.getElementById('WordWrap').addEventListener('click', function () {
       globals.editor.toggleWordWrap();
+    });
+
+    document.getElementById('ToggleFolding').addEventListener('click', function () {
+      globals.editor.toggleCodeFolding();
     });
 
     document.getElementById('UndoFile').addEventListener('click', function () {
@@ -681,19 +749,7 @@ async function setLayout() {
       $("#ParamsHistoryTable").DataTable().columns.adjust().draw();
     });
 
-    let mainDiv = document.getElementById("MainDiv");
-    
-    //<!-- Vanilla Tree Viewer -->
-    let edtScript = document.createElement("script");
-    edtScript.src = "https://cdn.jsdelivr.net/gh/abhchand/vanilla-tree-viewer@2.1.1/dist/index.min.js";
-    edtScript.onload = editor1setup;
-    mainDiv.appendChild(edtScript);
-
-    //<!-- Ace Code Editor Script -->
-    //let edtScript = document.createElement("script");
-    //edtScript.src = "https://cdn.jsdelivr.net/npm/ace-builds@1.31.2/src-min-noconflict/ace.min.js";
-    //edtScript.onload = editor2setup;
-    //mainDiv.appendChild(edtScript);
+    editor1setup();
     editor2setup();
 
     //document.getElementById("evalinput").addEventListener("click", function(event) { UIUtils.addSpinnerToIconButton("SendFileToLLM");  });
@@ -701,8 +757,7 @@ async function setLayout() {
 
 function editor1setup() {
   console.log("editor1 setup");
-  VanillaTreeViewer.renderAll();
-  globals.setReadOnlyEditor("editor1");
+  globals.setReadOnlyEditor("editor1Tree", "editor1");
   globals.loadDataOnMain();
 }
 

@@ -162,6 +162,7 @@ class VanillaEditor {
 window.draggingAceEditor = {};
 
 class AceEditor {
+  // Keyboard shortcuts - https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
   constructor(editorID) {
     this.editor = ace.edit(editorID);
     ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/");
@@ -170,6 +171,13 @@ class AceEditor {
     this.fileCache = new CodeFileCache();
     this.makeAceEditorResizable(this.editor);
     this.beautifier = ace.require("ace/ext/beautify");
+
+    this.codeFolding = false;
+  }
+
+  destroy() {
+    this.editor.destroy();
+    this.editor.container.remove();
   }
 
   makeAceEditorResizable(editor) {
@@ -254,11 +262,12 @@ class AceEditor {
       this.editor.session.setValue(file.content);
       this.setEditMode(file.name);
       this.curFile = file;
+      this.codeFolding = false;
       this.fileCache.put(this.curFile);
       this.editor.session.selection.on('changeSelection', function (e) { });
     } else {
       // save session and then create new session for new file?
-      console.log(`Already editing [${this.curFile.name}]`);
+      console.log(`Currently editing [${this.curFile.name}]`);
       // We already have code of the current file in cache. Check if there were any modifications done.
       if (this.curFile.content != this.getCode()) {
         UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
@@ -266,8 +275,9 @@ class AceEditor {
       } else {
         this.fileCache.put(this.curFile);
         this.curFile = null;
+        this.codeFolding = false;
       }
-      this.editFile(filepath);
+      this.editFile(filepath, editable, showVersion);  // We don't have any file now, call myself again
     }
   }
 
@@ -298,6 +308,10 @@ class AceEditor {
   curFileSavedSuccessfully(file) {
     this.curFile = file;
     this.fileCache.put(file);
+  }
+
+  setReadOnly(flag=true) {  // false to edit code
+    this.editor.setReadOnly(flag);
   }
 
   setEditMode(filepath) {
@@ -335,6 +349,28 @@ class AceEditor {
   getCurFile() {
     return new CodeFile(this.curFile.name, this.curFile.version, this.getCode());
   }
+
+  hasCodeFolded() {
+    return this.codeFolding;
+  }
+
+  toggleCodeFolding() {
+    if (this.hasCodeFolded()) {
+      this.unfoldAll();
+    } else {
+      this.foldAll();
+    }
+  }
+
+  foldAll() {
+    this.editor.getSession().foldAll();
+    this.codeFolding = true;
+  }
+
+   unfoldAll() {
+     this.editor.getSession().unfold();
+     this.codeFolding = false;
+   }
 }
 
 class TreeView {
@@ -345,9 +381,12 @@ class TreeView {
     this.jsonTree = null;
   }
 
-  destroy() {  // TODO: Remove Event Listeners set on the parent
+  destroy() {
     if (this.tree) {
       $("#" + this.treeID).empty();
+      let new_element = this.tree.cloneNode(true);
+      // Remove all event listeners set on the parent by Tree JS
+      this.tree.parentNode.replaceChild(new_element, this.tree);
       this.tree = null;
       this.jsonTree = null;
     }
@@ -360,6 +399,11 @@ class TreeView {
 
     this.tree.on('select', e => { 
       actionCallback(this.tree.getPath(e), e.dataset.type ? e.dataset.type : Tree.FOLDER); 
+    });
+
+    // keep track of the original node objects (need the names for browse to a specific file)
+    this.tree.on('created', (e, node) => {
+      e.node = node;
     });
 
     this.jsonTree = new FileTree(fileList);
@@ -378,35 +422,65 @@ class TreeView {
   getPath(element) {
     return this.tree.getPath(element);
   }
+
+  getPathList() {
+    return this.jsonTree.getFilePathList();
+  }
+
+  browseToFile(filepath) {
+    let elems = filepath.split('/');
+    if (elems.length) {
+      let cur = null;
+      let curElem = null;
+      while(cur = elems.shift()) {
+        this.tree.browse(a => {
+          if (a.textContent === cur) {
+            curElem = a;
+            return true;
+          }
+          return false;
+        }, this.tree.siblings(curElem ? curElem.nextElementSibling : undefined));
+      }
+    }
+  }
 }
 
 class AceEditorWithTree {
   static FILE = Tree.FILE;
   static FOLDER = Tree.FOLDER;
 
-  constructor(treeID, editorID) {
+  constructor(treeID, editorID, editableFiles=true) {
     this.treeID = treeID;
     this.editorID = editorID;
+    this.editableFiles = editableFiles;
 
     this.tree = new TreeView(this.treeID);
     this.editor = new AceEditor(this.editorID);
+    this.editor.setReadOnly(!this.editableFiles);
     this.treeCallback = null;
+    this.filelist = null;
   }
 
   destroy() {  // TODO: Remove the Event Listeners on the parent
     if (this.tree) {
       this.tree.destroy();
       this.tree = null;
+      this.editor.destroy();
+      this.editor = null;
     }
   }
 
-  initialize(fileList) {
-    this.tree.initialize(fileList, (filepath, type) => {
-      //console.log(type + " " + filepath);
-      if (type == this.FILE) {
-        this.editor.editFile(filepath, true, false); // Editable files with no version alert
-      }
-    });
+  initialize(fileList, selectActionCB=null) {
+    if (!selectActionCB) {
+      selectActionCB = (filepath, type) => {
+        if (type == AceEditorWithTree.FILE) {
+          //console.log("Editable [" + this.editableFiles + "] File set from TreeEditor [" + filepath + "]");
+          this.editor.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
+        }
+      };
+    }
+
+    this.tree.initialize(fileList, selectActionCB);
   }
 
   removeCurActive() {
@@ -423,6 +497,10 @@ class AceEditorWithTree {
   setupSelectListener(callback) {
     this.treeCallback = callback;
     this.tree.setupSelectListener(callback);
+  }
+
+  showFile(filepath) {
+    this.tree.browseToFile(filepath);
   }
 }
 

@@ -50,18 +50,73 @@
   .app_editor_dragbar {
     background-color: #222222;
     width: 100%;
-    height: 2px;
+    height: 4px;
     cursor: row-resize;
     opacity: 1;
   }
   
   .aceeditor_cmdbar {
     background-color: #525154;
-}
+    height: 30px;
+  }
 
-.aceeditor_cmdbar button {
+  .aceeditor_cmdbar button {
     background-color: #525154;
-}
+  }
+
+  .dirtree {
+    overflow: auto;
+    transition: width 0.3s ease-in;
+  }
+
+  .treeCollapsed {
+    width: 0%;
+    overflow: hidden;
+  }
+
+  #scrollable-dropdown-menu .tt-dropdown-menu {
+    max-height: 150px;
+    overflow-y: auto;
+    background-color: #aa0d0d;
+  }
+
+  .tt-open {
+    background-color: white;
+    border: 1px solid #ced4da;
+    padding: 1.5rem 0.1rem 01rem 0.1rem;
+  }
+
+  .tt-hint {
+    color: #999;
+  }
+  
+  .tt-menu {
+      width: 422px;
+      margin-top: 12px;
+      padding: 8px 0;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border: 1px solid rgba(0, 0, 0, 0.2);
+      box-shadow: 0 5px 10px rgba(0,0,0,.2);
+      max-height: 300px;
+      overflow-y: auto;
+  }
+  
+  .tt-suggestion {
+      padding: 3px 20px;
+      font-size: 18px;
+      line-height: 24px;
+  }
+  
+  .tt-suggestion.tt-cursor { 
+      color: #fff;
+      background-color: #0097cf;
+  }
+  
+  .tt-suggestion p {
+      margin: 0;
+  }
+
 /* 
   https://wordpress.org/support/topic/main-scrollbar-disappears-upon-triggering-a-modal-page-content-shifts-right/
   https://wordpress.org/support/topic/bug-with-a-moving-button-and-extra-gap/
