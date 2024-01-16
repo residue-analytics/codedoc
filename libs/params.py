@@ -18,10 +18,11 @@ from typing import Annotated
 
 __all__ = ["router", "MODELS"]
 
-keys_to_remove = ['api-key', 'id_for_prvdr', 'api_name', 'fn_index']
+keys_to_remove = ['api-key', 'id_for_prvdr', 'api_name', 'fn_index', 'enabled']
 MODELS_FOR_UI = None
 MODELS = {
     'code_llama_playground': {
+        'enabled': False,
         'id_for_prvdr': 'codellama/codellama-playground', 
         'name': 'Code Llama Playground',
         'code': 'CLP',
@@ -36,6 +37,7 @@ MODELS = {
         }
     },
     'llama2-7b': {
+        'enabled': False,
         'id_for_prvdr': 'huggingface-projects/llama-2-7b-chat',
         'name': 'Llama2 7B',
         'code': 'L27B',
@@ -52,6 +54,7 @@ MODELS = {
         }
     },
     'azure-openai-chat': {
+        'enabled': True,
         'id_for_prvdr': 'gpt-35-turbo-16k',
         'name': 'Azure OpenAI Chat',
         'code': 'AzOpC',
@@ -67,6 +70,7 @@ MODELS = {
         }
     },
     'azure-openai-llm': {
+        'enabled': True,
         'id_for_prvdr': 'gpt-35-turbo-instruct',
         'name': 'Azure OpenAI LLM',
         'code': 'AzOpL',
@@ -82,6 +86,7 @@ MODELS = {
         }
     },
     'openai-llm': {
+        'enabled': False,
         'id_for_prvdr': 'text-davinci-003',
         'name': 'OpenAI LLM',
         'code': 'OpLM',
@@ -97,6 +102,7 @@ MODELS = {
         }
     },
     'openai-chat': {
+        'enabled': False,
         'id_for_prvdr': 'ChatOpenAI',
         'name': 'OpenAI Chat',
         'code': 'COAI',
@@ -112,6 +118,7 @@ MODELS = {
         }
     },
     'gemini-pro-chat': {
+        'enabled': False,
         'id_for_prvdr': 'gemini-pro',
         'name': 'Google Gemini Pro Chat',
         'code': 'GGPC',
@@ -134,11 +141,19 @@ def copy_dict_and_remove_keys(original_dict, keys_to_remove):
     for key, value in original_dict.items():
         if key not in keys_to_remove:
             if isinstance(value, dict):
-                new_dict[key] = copy_dict_and_remove_keys(value, keys_to_remove)
+                if 'enabled' in value and not value.get('enabled'):
+                    continue
+                next = copy_dict_and_remove_keys(value, keys_to_remove)
+                if next is not None:
+                    new_dict[key] = next
             else:
-                new_dict[key] = value
-    return new_dict
+                if value is not None:
+                    new_dict[key] = value
 
+    if len(new_dict) > 0:
+        return new_dict
+    else:
+        return None
 
 @router.get("/models/")
 def get_models(current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:

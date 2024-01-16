@@ -114,6 +114,13 @@ class LLMParamsUI {
   }
 
   updateLLMParams(params) {
+    let modelCode = this.modelLLMParam.getValue();
+    console.log("From params [" + params.llmID + "] From selctor [" + modelCode + "]");
+    if (modelCode == "" || modelCode == "None" || modelCode == null) {
+      const model = globals.models.findByID(params.llmID);
+      this.modelLLMParam.setValue(model.code);
+    }
+
     this.updateKWArgs(params.model_kwargs);
     if (params.user_prompt == null) {
       this.usrPromParam.disable();
@@ -738,6 +745,7 @@ async function setLayout() {
             }
         } catch (err) {
             console.log(err);
+            UIUtils.showAlert('erroralert', err);
         }
     });
 
