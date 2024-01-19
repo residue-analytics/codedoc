@@ -94,6 +94,7 @@ class FetchAPI {
           if (data.detail.loc && data.detail.msg && data.detail.type) {
             console.log(`Code: ${code}, Location: ${data.detail.loc.join(', ')}, Message: ${msg}, Type: ${data.detail.type}`);
           } else {
+            msg = msg ? msg : data.detail;
             console.log(`Code: ${code}, Message: ${msg}`)
           }
         } else {

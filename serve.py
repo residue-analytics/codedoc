@@ -152,9 +152,10 @@ async def call_llm(params: LLMParams,
 
     if model_obj['provider'] == 'AzureChatOpenAI':
         model = AzureChatOpenAI(
+            deployment_name=model_obj['id_for_prvdr'],
             model_name=model_obj['id_for_prvdr'],
-            openai_api_version=os.getenv('OPENAI_API_VERSION'),
-            azure_deployment=model_obj['id_for_prvdr'],
+            openai_api_version=model_obj['api_version'],
+            azure_endpoint=model_obj['endpoint'],
             temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
             model_kwargs={ "top_p": kwargs['topp_nucleus_sampling'], 
             "frequency_penalty": kwargs['repetition_penalty'], 
@@ -166,6 +167,8 @@ async def call_llm(params: LLMParams,
         model = AzureOpenAI(
             deployment_name=model_obj['id_for_prvdr'],
             model_name=model_obj['id_for_prvdr'],
+            openai_api_version=model_obj['api_version'],
+            azure_endpoint=model_obj['endpoint'],
             temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
             top_p=kwargs['topp_nucleus_sampling'], frequency_penalty=kwargs['repetition_penalty'], 
             presence_penalty=kwargs['presence_penalty']

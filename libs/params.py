@@ -53,16 +53,36 @@ MODELS = {
             'api_name': '/chat'
         }
     },
+    'azure-openai4t-chat': {
+        'enabled': True,
+        'id_for_prvdr': 'gpt-4-turbo',
+        'api_version': '2023-07-01-preview',
+        'endpoint': 'https://dcrdpaiopenai02.openai.azure.com/',
+        'name': 'Azure OpenAI 4T Chat',
+        'code': 'AzOp4tC',
+        'api-key': None,
+        'provider': 'AzureChatOpenAI',
+        'model_kwargs': {
+            'system_prompt': 'You are a helpful agent',
+            'max_new_tokens': 2048,
+            'temperature': 0.1,
+            'topp_nucleus_sampling': 0.9,
+            'repetition_penalty': 1,
+            'presence_penalty': 0
+        }
+    },
     'azure-openai-chat': {
         'enabled': True,
         'id_for_prvdr': 'gpt-35-turbo-16k',
+        'api_version': '2023-07-01-preview',
+        'endpoint': 'https://dcrdpaiopenai01.openai.azure.com/',
         'name': 'Azure OpenAI Chat',
         'code': 'AzOpC',
         'api-key': None,
         'provider': 'AzureChatOpenAI',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
-            'max_new_tokens': 256,
+            'max_new_tokens': 1024,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
             'repetition_penalty': 1,
@@ -72,13 +92,15 @@ MODELS = {
     'azure-openai-llm': {
         'enabled': True,
         'id_for_prvdr': 'gpt-35-turbo-instruct',
+        'api_version': '2023-09-15-preview',
+        'endpoint': 'https://dcrdpaiopenai01.openai.azure.com/',
         'name': 'Azure OpenAI LLM',
         'code': 'AzOpL',
         'api-key': None,
         'provider': 'AzureOpenAILLM',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
-            'max_new_tokens': 256,
+            'max_new_tokens': 1024,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
             'repetition_penalty': 1,

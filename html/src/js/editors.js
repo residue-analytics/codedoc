@@ -252,6 +252,7 @@ class AceEditor {
         if (err.code == 404 && editable) {
           file = await new FilesService().getFileContent(filepath, false);  // Get the original file
         } else {
+          UIUtils.showAlert("erroralert", err);
           throw err;
         }
       }

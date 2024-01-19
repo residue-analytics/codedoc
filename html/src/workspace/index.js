@@ -658,7 +658,7 @@ async function setLayout() {
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
-                globals.outputEditor.setText(err);
+                globals.outputEditor.setText(JSON.stringify(err));
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -682,7 +682,7 @@ async function setLayout() {
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-                globals.outputEditor.setText(err);
+                globals.outputEditor.setText(JSON.stringify(err));
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -709,7 +709,7 @@ async function setLayout() {
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-                globals.outputEditor.setText(err);
+                globals.outputEditor.setText(JSON.stringify(err));
                 //document.getElementById('ModelOutput').value = err;
             });
     });
