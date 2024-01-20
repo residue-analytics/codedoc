@@ -43,6 +43,7 @@ class LLMParamUIPair {
 
   setValue(value) {
     this.elem.value = value;
+    this.elem.dispatchEvent(new InputEvent("input"));
   }
 
   addToValue(value) {
