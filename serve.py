@@ -17,13 +17,14 @@ from typing import Annotated
 from fastapi             import Depends, FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
+import openai
 from langchain.globals   import set_verbose
 from langchain.globals   import set_debug
 from langchain.globals   import set_llm_cache
 from langchain.cache     import InMemoryCache
 from langchain.prompts   import PromptTemplate
 from langchain.schema    import BaseOutputParser
-from langchain.schema    import HumanMessage, SystemMessage
+from langchain.schema    import HumanMessage, SystemMessage, AIMessage
 from langchain.chat_models import AzureChatOpenAI
 from langchain.chat_models import ChatOpenAI
 from langchain.llms      import OpenAI
@@ -162,7 +163,18 @@ async def call_llm(params: LLMParams,
             "presence_penalty": kwargs['presence_penalty'] }
         )
         message = format_prompt(False, params.system_prompt, params.context, params.code_snippet, params.user_prompt)
-        return { 'model_resp': str(model(message)) }
+        model_resp = None
+        try:
+            model_resp = model(message)
+            if isinstance(model_resp, AIMessage):
+                return { 'model_resp': str(model_resp.content) }
+            else:
+                return { 'model_resp': str(model_resp) }
+        except openai.BadRequestError as excp:
+            return { 'model_resp': str(excp) }
+        except Exception as e:
+            return { 'model_resp': str(e) }
+
     elif model_obj['provider'] == 'AzureOpenAILLM':
         model = AzureOpenAI(
             deployment_name=model_obj['id_for_prvdr'],
@@ -174,7 +186,15 @@ async def call_llm(params: LLMParams,
             presence_penalty=kwargs['presence_penalty']
         )
         message = format_prompt(True, params.system_prompt, params.context, params.code_snippet, params.user_prompt)
-        return { 'model_resp': str(model(message)) }
+        model_resp = None
+        try:
+            model_resp = model(message)
+            return { 'model_resp': str(model_resp) }
+        except openai.BadRequestError as excp:
+            return { 'model_resp': str(excp) }
+        except Exception as e:
+            return { 'model_resp': str(e) }
+
     elif model_obj['provider'] == 'OpenAI':
         local_llm = OpenAI(temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
             top_p=kwargs['topp_nucleus_sampling'], frequency_penalty=kwargs['repetition_penalty'], 
