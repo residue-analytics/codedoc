@@ -59,6 +59,9 @@ Select a file in the folder tree view, to view it here.
             <button id="SaveFile" type="button" class="btn btn-sm text-light" 
               title="Save the changed file as a new Version on server"> <span class="bi bi-floppy"></span>
             </button>
+            <button id="ParseFile" type="button" class="btn btn-sm text-light" 
+              title="Extract functions from the file"> <span class="bi bi-braces"></span>
+            </button>
           </div>
           <div class="btn-group" role="group">
             <button type="button" class="btn btn-sm text-light" title="See all keyboard shortcuts, opens a new window/tab"
@@ -140,7 +143,11 @@ Select a file in the folder tree view, to edit it here.
             <button id="SendFileToLLM" type="button" class="btn btn-primary btn-sm"
               title="Send File with prompts and params"> 
               <span class="bi bi-file-earmark-code"></span>
-              </button>
+            </button>
+            <button id="SendFuncsToLLM" type="button" class="btn btn-primary btn-sm"
+              title="Send all Functions iteratively with prompts and params"> 
+              <span class="bi bi-braces"></span>
+            </button>
             <button id="SendSelectionToLLM" type="button" class="btn btn-primary btn-sm"
               title="Send Selected Text with prompts and params"> 
               <span class="bi bi-text-paragraph"></span>
@@ -169,7 +176,7 @@ Select a file in the folder tree view, to edit it here.
           <div class="mb-3 visually-hidden">
             <label for="SysPromptInput" class="form-label">System Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
-                data-bs-prompt="System"></a>
+                data-bs-prompt="System" title="Lists all System Prompts created by you"></a>
             </label>
             <textarea id="SysPromptInput" class="form-control" rows="6" placeholder="System Prompt"></textarea>
             <div class="form-text">
@@ -178,7 +185,9 @@ Select a file in the folder tree view, to edit it here.
             </div>
           </div>
           <div class="mb-3 visually-hidden">
-            <label for="ContextInput" class="form-label">Context</label>
+            <label for="ContextInput" class="form-label">Context
+              <a id="ContextInputClear" href="#" class="bi bi-x" title="Clear Context"></a>
+            </label>
             <textarea id="ContextInput" class="form-control" rows="6" placeholder="Context"></textarea>
             <div class="form-text">
               The overall context of the conversation with the LLM. In a to-and-fro chat scenarios, whole chat
@@ -190,7 +199,7 @@ Select a file in the folder tree view, to edit it here.
           <div class="mb-3 visually-hidden">
             <label for="UsrPromptInput" class="form-label">User Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
-                data-bs-prompt="User"></a>
+                data-bs-prompt="User" title="Lists all User Prompts created by you"></a>
             </label>
             <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
             <div class="form-text">
@@ -310,7 +319,7 @@ Select a file in the folder tree view, to edit it here.
     <div id="ParamsHistoryModal" tabindex="-1" class="modal fade">
       <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content">
-          <div class="modal-header">
+          <div class="modal-header fh-fixedHeader">
             <h1 class="modal-title fs-5">Params saved by all Users</h1>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>

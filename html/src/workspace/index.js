@@ -320,17 +320,24 @@ class PageGlobals {
       //console.log(history);
       UIUtils.showAlert("erroralert", `Received [${history.records.length}] reocrds from server`);
 
-      $("#ParamsHistoryModal .modal-body").append('<table id="ParamsHistoryTable" class="table table-sm table-bordered" style="width:100%"></table>');
+      $("#ParamsHistoryModal .modal-body").append('<table id="ParamsHistoryTable" class="table table-sm table-bordered table-hover" style="width:100%"></table>');
       
       const histModal = new bootstrap.Modal("#ParamsHistoryModal");
       histModal.show();
 
       const dataTable = $("#ParamsHistoryTable").DataTable({
-        dom: 'Bfrtip',
+        //dom: 'Bfrtip',
+        dom: 'B' + "<'row'<'col-md-6'i><'col-md-6'f>>" + 'tr' + "<'row'<'col-md-5'l><'col-md-7'p>>",
         destroy: true,
         data: history.records,   // Array of JSON flat objects, not LLMParams Model objects
         scrollX: true,
-        fixedHeader: true,
+        scrollY: 450,
+        scrollCollapse: true,
+        paging: false,
+        //fixedHeader: {          // Fixed Header won't work in Bootstrap Modal
+        //  header: true,         // https://datatables.net/forums/discussion/41126/how-can-fixedheader-work-for-bootstrap-modal
+        //  headerOffset: 200 
+        //},
         select: {
           items: 'row',
           style: 'single',
@@ -355,6 +362,22 @@ class PageGlobals {
           { targets: 2, render: function (data, type, row, meta) { 
               //console.log(data + " " + type + " " + row.params.llmID);
               return globals.models.findByID(data).name;
+            }
+          },
+          { targets: 4, render: function (data, type, row, meta) { 
+              //console.log(data + " " + type + " " + row.params.llmID);
+              if (type === 'display') {
+                return '<p style="white-space: pre-line;">' + data + '</p>';
+              }
+              return data;
+            }
+          },
+          { targets: 5, render: function (data, type, row, meta) { 
+              //console.log(data + " " + type + " " + row.params.llmID);
+              if (type === 'display') {
+                return '<p style="white-space: pre-line;">' + data + '</p>';
+              }
+              return data;
             }
           }
         ],
@@ -384,7 +407,7 @@ class PageGlobals {
                   return;
                 }
 
-                //if (confirm('Delete ' + data.user + "'s params for [" + data.params.llmID + "]") == true) {
+                if (confirm('Delete ' + data.user + "'s params for [" + data.params.llmID + "]") == true) {
                   console.log(`Deleting Record [${data.hash}]!!`);
                   let resp = await new LLMParamsService().deleteParam(data);
                   UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
@@ -392,7 +415,7 @@ class PageGlobals {
                   dt.clear();
                   dt.rows.add(updatedHist.records); // Add new data
                   dt.columns.adjust().draw(); // Redraw the DataTable
-                //}
+                }
               } catch (err) {
                 console.log(err);
                 UIUtils.showAlert('erroralert', "Unable to delete the prompt record");
@@ -411,6 +434,7 @@ class PageGlobals {
                 //  "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
                     console.log("Approved application!!");
                     globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
+                    UIUtils.showAlert('erroralert', "Loaded " + data.user + "'s Params");
                 //}
               } catch(err) {
                 console.log(err);
@@ -554,9 +578,14 @@ async function setLayout() {
     globals.llmParamsUI.prspenLLMParam = new LLMParamUIPair('PresencePenaltyBtn', 'PresencePenaltyInput', 'range');
     globals.llmParamsUI.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', 'number', true, true);
 
-    document.getElementById('SaveParams').addEventListener('click', function () {
-      const histModal = new bootstrap.Modal("#ParamsPurposeModal");
-      histModal.show();
+    document.getElementById('ContextInputClear').addEventListener('click', function (e) {
+      e.preventDefault();
+      document.getElementById('ContextInput').value = '';
+    });
+
+    document.getElementById('SaveParams').addEventListener('click', function (e) {
+      const purpModal = new bootstrap.Modal("#ParamsPurposeModal");
+      purpModal.show();
     });
 
     $("#ParamsPurposeModal .modal-footer .btn").on('click', function() {
@@ -642,6 +671,12 @@ async function setLayout() {
         }
     });
 
+    document.getElementById('ParseFile').addEventListener('click', function () {
+      const funcs = globals.editor.getTopLevelFunctionsFromCode();
+      UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
+      console.log(funcs);
+    });
+
     document.getElementById('SendToLLM').addEventListener('click', function () {
         let params = globals.llmParamsUI.getLLMParams();
         if (!params || !params.llmID) {
@@ -686,6 +721,46 @@ async function setLayout() {
                 globals.outputEditor.setText(JSON.stringify(err));
                 //document.getElementById('ModelOutput').value = err;
             });
+    });
+
+    document.getElementById('SendFuncsToLLM').addEventListener('click', async function () {
+      let params = globals.llmParamsUI.getLLMParams();
+      if (!params || !params.llmID) {
+          UIUtils.showAlert("erroralert", `Unable to send to [${params}] LLM`);
+          return;
+      }
+
+      globals.outputEditor.setText("");
+
+      const funcs = globals.editor.getTopLevelFunctionsFromCode();
+      if (funcs.length === 0) {
+        UIUtils.showAlert("erroralert", "No functions found in the code");
+      } else {
+        UIUtils.addSpinnerToIconButton('SendFuncsToLLM');
+        for (const found_function of funcs) {
+          globals.outputEditor.appendText(`${"=".repeat(10)} Processing [${found_function.name}] ${"=".repeat(10)}`);
+
+          params.code_snippet = globals.editor.getFunctionCode(found_function);
+          if (!params.code_snippet || params.code_snippet.length == 0) {
+              UIUtils.showAlert("erroralert", "Nothing to send from [" + found_function.name + "()] function");
+              globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for ${found_function.name} ${"=".repeat(5)}\n`);
+              continue;
+          }
+          
+          try {
+            let resp = await new LLMService().callLLM(params);
+            globals.outputEditor.appendText(resp);
+            //document.getElementById('ModelOutput').value = resp;
+          } catch (err) {
+            globals.outputEditor.appendText(JSON.stringify(err));
+            //document.getElementById('ModelOutput').value = err;
+          }
+
+          globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
+        }
+
+        UIUtils.rmSpinnerFromIconButton('SendFuncsToLLM');
+      }
     });
 
     document.getElementById('SendSelectionToLLM').addEventListener('click', function () {
@@ -739,7 +814,7 @@ async function setLayout() {
             } else {
                 let allPrompts = "<ol>";
                 prompt_set.forEach(prompt => {
-                    allPrompts += `<li> ${prompt} </li>`;
+                    allPrompts += `<li style="white-space: pre-line;"> ${prompt} </li>`;
                 });
                 allPrompts += "</ol>";
                 modalBody.innerHTML = allPrompts;
@@ -755,7 +830,9 @@ async function setLayout() {
     });
 
     $("#ParamsHistoryModal").on("shown.bs.modal", (event)=> {
-      $("#ParamsHistoryTable").DataTable().columns.adjust().draw();
+      const dataTable = $("#ParamsHistoryTable").DataTable();
+      dataTable.columns.adjust().draw();
+      // dataTable.fixedHeader.adjust();  // Fixed Header won't work in Bootstrap Modal
     });
 
     editor1setup();

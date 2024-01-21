@@ -243,6 +243,13 @@ class AceEditor {
     });
   }
 
+  getFilename() {
+    if (this.curFile) {
+      return this.curFile.name;
+    }
+    return "";
+  }
+
   async editFile(filepath, editable=true, showVersion=true) {
     let file = null;
     if (this.curFile == null) {
@@ -335,6 +342,16 @@ class AceEditor {
     this.editor.session.setValue(content);
   }
 
+  appendText(content) {  // content can be an String[] or String
+    // Add content at the end of the Document
+    const curDoc = this.editor.session.doc;
+    if (Array.isArray(content)) {
+      curDoc.insertFullLines(curDoc.getLength(), content);
+    } else {
+      curDoc.insertFullLines(curDoc.getLength(), content.split("\n"));
+    }
+  }
+
   beautify() {
     this.beautifier.beautify(this.editor.session);
   }
@@ -345,6 +362,15 @@ class AceEditor {
 
   getSelectedCode() {
     return this.editor.getSelectedText();
+  }
+
+  getCodeRange(firstRow, lastRow) {
+    // returns Array of lines
+    return this.editor.session.getLines(firstRow, lastRow);
+  }
+
+  getFunctionCode(parsedFunc) {  // parsedFunc object returned from getTopLevelFunctionsFromCode()
+    return this.getCodeRange(parsedFunc.loc.start.line, parsedFunc.loc.end.line).join("\n");
   }
 
   getCurFile() {
@@ -368,10 +394,43 @@ class AceEditor {
     this.codeFolding = true;
   }
 
-   unfoldAll() {
-     this.editor.getSession().unfold();
-     this.codeFolding = false;
-   }
+  unfoldAll() {
+    this.editor.getSession().unfold();
+    this.codeFolding = false;
+  }
+
+  getTopLevelFunctionsFromCode() {
+    if (!this.curFile) {
+      UIUtils.showAlert("erroralert", "No File Loaded in Editor");
+      return;
+    }
+
+    if (!this.curFile.name.endsWith(".js")) {
+      UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
+      return;
+    }
+
+    let funcDecls = [];
+    try {
+      const parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, comment: true });
+      if (parsedCode.body && parsedCode.body.length > 0) {
+        parsedCode.body.forEach(chunk => {
+          if (chunk.type === "FunctionDeclaration") {
+            funcDecls.push({name: chunk.id.name, loc: chunk.loc});
+          }
+        });
+      } else {
+        UIUtils.showAlert("erroralert", "No Functions found.");
+      }
+
+      //console.log(parsedCode);
+    } catch (exp) {
+      console.log(exp);
+      UIUtils.showAlert("erroralert", "Unable to parse the file, check console log");
+    }
+
+    return funcDecls;
+  }
 }
 
 class TreeView {
@@ -384,10 +443,13 @@ class TreeView {
 
   destroy() {
     if (this.tree) {
-      $("#" + this.treeID).empty();
-      let new_element = this.tree.cloneNode(true);
+      const treeElem = document.getElementById(this.treeID);
+      const new_element = treeElem.cloneNode(true);
       // Remove all event listeners set on the parent by Tree JS
-      this.tree.parentNode.replaceChild(new_element, this.tree);
+      treeElem.parentNode.replaceChild(new_element, treeElem);
+
+      $("#" + this.treeID).empty();
+
       this.tree = null;
       this.jsonTree = null;
     }

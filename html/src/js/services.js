@@ -252,7 +252,7 @@ class LLMService {
     // Returns text
 
     const response = await new FetchAPI().post('/llm/', params.toJSON());
-    console.log(response);
+    //console.log(response);
     // Gets a model_resp JSON attribute
     return response.model_resp;
   }
