@@ -25,7 +25,7 @@ from typing import Dict
 # openssl rand -hex 32
 SECRET_KEY = "03ce19ebe700afcd4567b4665569f3685339508bfeacd978ae28caa5eba0b787"
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
 sqlite_dbname = 'codegen_user.db'
 users_db = UserDatabase(sqlite_dbname)
@@ -162,8 +162,8 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],
         if expires < datetime.now(timezone.utc):
             raise credentials_exception
 
-        if expires - datetime.now(timezone.utc) < timedelta(minutes=15):
-            # token expiring within 15 minutes, reissue a new one
+        if expires - datetime.now(timezone.utc) < timedelta(minutes=30):
+            # token expiring within 30 minutes, reissue a new one
             access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
                 data={"sub": username}, expires_delta=access_token_expires
