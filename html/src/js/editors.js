@@ -1,6 +1,7 @@
 import { FilesService } from "./services.js";
 import { UIUtils } from "./utils.js";
 import { CodeFile, CodeFileCache, FileTree } from "./models.js";
+import esprima from "https://unpkg.com/esprima-next@6.0.2/dist/esprima.js";
 import  "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ace.min.js";
 import  "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ext-beautify.js";
 
@@ -414,16 +415,36 @@ class AceEditor {
     try {
       const parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, comment: true });
       if (parsedCode.body && parsedCode.body.length > 0) {
-        parsedCode.body.forEach(chunk => {
-          if (chunk.type === "FunctionDeclaration") {
-            funcDecls.push({name: chunk.id.name, loc: chunk.loc});
+        parsedCode.body.forEach(node => {
+          if (node.type.includes("FunctionDeclaration")) {
+            // function() { }
+            funcDecls.push({name: node.id.name, loc: node.loc});
+          } else if (node.type === "ExpressionStatement" && 
+                     node.expression.type === "AssignmentExpression" &&
+                     node.expression.right.type.includes("FunctionExpression")) {
+            // obj.prop = function() { }
+            const funcObj = { name: "", loc: node.loc };
+            if (node.expression.left.object) {
+              funcObj.name += node.expression.left.object.name;
+            }
+            if (node.expression.left.property) {
+              funcObj.name += "." + node.expression.left.property.name;
+            }
+            funcDecls.push(funcObj);
+          } else if (node.type === "VariableDeclaration") {
+            // var variable = function () { }
+            for (const decl of node.declarations) {
+              if (decl.init && decl.init.type.includes("FunctionExpression")) {
+                funcDecls.push({ name: decl.id.name, loc: node.loc });
+              }
+            }
           }
         });
       } else {
         UIUtils.showAlert("erroralert", "No Functions found.");
       }
 
-      //console.log(parsedCode);
+      console.log(parsedCode);
     } catch (exp) {
       console.log(exp);
       UIUtils.showAlert("erroralert", "Unable to parse the file, check console log");
