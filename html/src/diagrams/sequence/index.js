@@ -65,7 +65,7 @@ function setLayout() {
   document.getElementById("convertToJSON").addEventListener("click", () => {
     try {
       const json = csvJSON(globals.inputEditor.getCode(), '"', ',');
-      console.log(json);
+      //console.log(json);
       globals.jsonEditor.setText(JSON.stringify(json));
       globals.jsonEditor.beautify();
     } catch (exp) {

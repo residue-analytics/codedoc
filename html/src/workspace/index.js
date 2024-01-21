@@ -76,6 +76,16 @@ class LLMParamUIPair {
   enabled() {
     return !this.disabled;
   }
+
+  readonly(on=true) {
+    if (on) {
+      this.elem.setAttribute("readonly", true);
+      this.elem.setAttribute("disabled", true);
+    } else {
+      this.elem.removeAttribute("readonly");
+      this.elem.removeAttribute("disabled");
+    }
+  }
 }
 
 class LLMParamsUI {
@@ -90,6 +100,24 @@ class LLMParamsUI {
     this.reppenLLMParam = null;
     this.prspenLLMParam = null;
     this.topkLLMParam = null;
+
+    this.locked = false;
+  }
+
+  isLocked() {
+    return this.locked;
+  }
+
+  lockParams(locked=true) {
+    this.locked = locked;
+    this.sysPromParam.readonly(this.locked);
+    this.usrPromParam.readonly(this.locked);
+    this.tempLLMParam.readonly(this.locked);
+    this.toppLLMParam.readonly(this.locked);
+    this.maxTokenParam.readonly(this.locked);
+    this.reppenLLMParam.readonly(this.locked);
+    this.prspenLLMParam.readonly(this.locked);
+    this.topkLLMParam.readonly(this.locked);
   }
 
   getLLMParams() {
@@ -115,6 +143,10 @@ class LLMParamsUI {
   }
 
   updateLLMParams(params) {
+    if (this.isLocked()) {
+      throw new Error("Params are Locked");
+    }
+
     let modelCode = this.modelLLMParam.getValue();
     console.log("From params [" + params.llmID + "] From selctor [" + modelCode + "]");
     if (modelCode == "" || modelCode == "None" || modelCode == null) {
@@ -132,6 +164,10 @@ class LLMParamsUI {
   }
 
   updateKWArgs(kwargs) {
+    if (this.isLocked()) {
+      throw new Error("Params are Locked");
+    }
+
     if (kwargs.temperature == null) {
       this.tempLLMParam.disable();
     } else {
@@ -418,7 +454,7 @@ class PageGlobals {
                 }
               } catch (err) {
                 console.log(err);
-                UIUtils.showAlert('erroralert', "Unable to delete the prompt record");
+                UIUtils.showAlert('erroralert', "Unable to delete the prompt record [" + err + "]");
               }
             }
           },
@@ -438,7 +474,7 @@ class PageGlobals {
                 //}
               } catch(err) {
                 console.log(err);
-                UIUtils.showAlert('erroralert', "Unable to load the prompt record");
+                UIUtils.showAlert('erroralert', "Unable to load the prompt record [" + err + "]");
               }
             }
           },
@@ -517,13 +553,14 @@ class PageGlobals {
 
     try {
       params = await this.getSavedLLMParams(model.id);
+      if (params) {
+        this.llmParamsUI.updateLLMParams(params);
+      } else {
+        this.llmParamsUI.updateKWArgs(model.model_kwargs);
+      }
     } catch (err) {
-    }
-    
-    if (params) {
-      this.llmParamsUI.updateLLMParams(params);
-    } else {
-      this.llmParamsUI.updateKWArgs(model.model_kwargs);
+      UIUtils.showAlert("erroralert", err);
+      console.log(err);
     }
   }
 }
@@ -586,6 +623,14 @@ async function setLayout() {
     document.getElementById('SaveParams').addEventListener('click', function (e) {
       const purpModal = new bootstrap.Modal("#ParamsPurposeModal");
       purpModal.show();
+    });
+
+    document.getElementById('LockParams').addEventListener('click', function(e) {
+      if (globals.llmParamsUI.isLocked()) {
+        globals.llmParamsUI.lockParams(false);
+      } else {
+        globals.llmParamsUI.lockParams(true);
+      }
     });
 
     $("#ParamsPurposeModal .modal-footer .btn").on('click', function() {
