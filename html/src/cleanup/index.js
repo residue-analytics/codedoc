@@ -1,7 +1,6 @@
-import { VanillaEditor, AceEditorWithTree } from "../js/editors.js";
+import { AceEditorWithTree } from "../js/editors.js";
 import { FilesService } from "../js/services.js";
 import { AppGlobals, UIUtils } from "../js/utils.js";
-import { FileTree } from "../js/models.js";
 
 class PageGlobals {
     constructor() {
