@@ -366,8 +366,11 @@ class AceEditor {
   }
 
   getCodeRange(firstRow, lastRow) {
-    // returns Array of lines
-    return this.editor.session.getLines(firstRow, lastRow);
+    // returns Array of lines, inclusive of both the rows. First row is 1, not 0 (array index)
+    if (firstRow == lastRow) {
+      return [this.editor.session.getLine(firstRow-1)];
+    }
+    return this.editor.session.getLines(firstRow-1, lastRow);
   }
 
   getFunctionCode(parsedFunc) {  // parsedFunc object returned from getTopLevelFunctionsFromCode()
@@ -444,7 +447,7 @@ class AceEditor {
         UIUtils.showAlert("erroralert", "No Functions found.");
       }
 
-      console.log(parsedCode);
+      //console.log(parsedCode);
     } catch (exp) {
       console.log(exp);
       UIUtils.showAlert("erroralert", "Unable to parse the file, check console log");

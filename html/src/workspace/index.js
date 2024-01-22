@@ -782,21 +782,30 @@ async function setLayout() {
         UIUtils.showAlert("erroralert", "No functions found in the code");
       } else {
         UIUtils.addSpinnerToIconButton('SendFuncsToLLM');
+        let all_resps = [];
         for (const found_function of funcs) {
-          globals.outputEditor.appendText(`${"=".repeat(10)} Processing [${found_function.name}] ${"=".repeat(10)}`);
+          let this_resp = { filename: globals.editor.getFilename(), funcname: found_function.name };
+          all_resps.push(this_resp);
+          globals.outputEditor.appendText(JSON.stringify(this_resp));
 
           params.code_snippet = globals.editor.getFunctionCode(found_function);
+          //console.log(params.code_snippet);
           if (!params.code_snippet || params.code_snippet.length == 0) {
               UIUtils.showAlert("erroralert", "Nothing to send from [" + found_function.name + "()] function");
-              globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for ${found_function.name} ${"=".repeat(5)}\n`);
+              this_resp.model_resp = "";
+              console.log(found_function);
+              globals.outputEditor.appendText("No code available for this function");
+              globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
               continue;
           }
           
           try {
             let resp = await new LLMService().callLLM(params);
+            this_resp.model_resp = resp;
             globals.outputEditor.appendText(resp);
             //document.getElementById('ModelOutput').value = resp;
           } catch (err) {
+            this_resp.model_err = err;
             globals.outputEditor.appendText(JSON.stringify(err));
             //document.getElementById('ModelOutput').value = err;
           }
@@ -804,6 +813,7 @@ async function setLayout() {
           globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
         }
 
+        globals.outputEditor.appendText(JSON.stringify(all_resps));
         UIUtils.rmSpinnerFromIconButton('SendFuncsToLLM');
       }
     });
