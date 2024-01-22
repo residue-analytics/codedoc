@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import json
 from datetime            import datetime
 
@@ -26,7 +27,7 @@ MODELS = {
         'id_for_prvdr': 'codellama/codellama-playground', 
         'name': 'Code Llama Playground',
         'code': 'CLP',
-        'api-key': None, 
+        'api-key': None,
         'provider': 'HuggingFaceSpaces',
         'model_kwargs': {
             'temperature': 0.1,
@@ -60,7 +61,7 @@ MODELS = {
         'endpoint': 'https://dcrdpaiopenai02.openai.azure.com/',
         'name': 'Azure OpenAI 4T Chat',
         'code': 'AzOp4tC',
-        'api-key': None,
+        'api-key': os.getenv("AZURE_OPENAI_API_KEY2"), 
         'provider': 'AzureChatOpenAI',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
@@ -78,7 +79,7 @@ MODELS = {
         'endpoint': 'https://dcrdpaiopenai01.openai.azure.com/',
         'name': 'Azure OpenAI Chat',
         'code': 'AzOpC',
-        'api-key': None,
+        'api-key': os.getenv("AZURE_OPENAI_API_KEY"), 
         'provider': 'AzureChatOpenAI',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
@@ -96,7 +97,7 @@ MODELS = {
         'endpoint': 'https://dcrdpaiopenai01.openai.azure.com/',
         'name': 'Azure OpenAI LLM',
         'code': 'AzOpL',
-        'api-key': None,
+        'api-key': os.getenv("AZURE_OPENAI_API_KEY"), 
         'provider': 'AzureOpenAILLM',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',

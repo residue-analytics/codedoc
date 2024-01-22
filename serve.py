@@ -151,6 +151,7 @@ async def call_llm(params: LLMParams,
 
     if model_obj['provider'] == 'AzureChatOpenAI':
         model = AzureChatOpenAI(
+            openai_api_key=model_obj['api-key'],
             deployment_name=model_obj['id_for_prvdr'],
             model_name=model_obj['id_for_prvdr'],
             openai_api_version=model_obj['api_version'],
@@ -175,6 +176,7 @@ async def call_llm(params: LLMParams,
 
     elif model_obj['provider'] == 'AzureOpenAILLM':
         model = AzureOpenAI(
+            openai_api_key=model_obj['api-key'],
             deployment_name=model_obj['id_for_prvdr'],
             model_name=model_obj['id_for_prvdr'],
             openai_api_version=model_obj['api_version'],
