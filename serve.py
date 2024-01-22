@@ -47,6 +47,7 @@ parser.add_argument("--idir", default='./oldcode', help="Directory containing co
 parser.add_argument("--odir", default="./newcode", help="Directory to save modified code")
 parser.add_argument("--html", default="./html/src", help="Static Content directory path")
 parser.add_argument("--port", type=int, default="8000", help="Port to listen on")
+parser.add_argument("--useHTTPS", action='store_true', help="Enable HTTPS")
 
 args = parser.parse_args()
 
@@ -55,7 +56,6 @@ files.OUTPUT_CODE_DIR = args.odir
 
 #checkEnviron()
 
-#uvicorn.run(app, host="localhost", port=8000, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
 
 class CommaSeparatedListOutputParser(BaseOutputParser[List[str]]):
     """Parse the output of an LLM call to a comma-separated list."""
@@ -86,8 +86,6 @@ def format_prompt(for_llm: bool, sys_mesg: str, ctxt: str, code: str, user_msg: 
 set_verbose(True)
 
 # raise HTTPException(status_code=404, detail={'exp':excp_trace, 'msg':Message}) -> JSON { detail:{...}}
-#ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-#ssl_context.load_cert_chain('./cert.pem', keyfile='./key.pem')
 
 # App definition
 app = FastAPI(
@@ -241,5 +239,9 @@ def checkEnviron():
     if not res:
         exit(1)
 
-
-uvicorn.run(app, host="0.0.0.0", port=args.port)
+if args.useHTTPS:
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    ssl_context.load_cert_chain('./cert.pem', keyfile='./key.pem')
+    uvicorn.run(app, host="0.0.0.0", port=args.port, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
+else:
+    uvicorn.run(app, host="0.0.0.0", port=args.port)
