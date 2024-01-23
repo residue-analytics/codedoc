@@ -185,9 +185,10 @@ class AceEditor {
 
   makeAceEditorResizable(editor) {
     const id_editor = editor.container.id;
-    const id_dragbar = '#' + id_editor + '_dragbar';
-    const id_wrapper = '#' + id_editor + '_wrapper';
-    const id_toolbar = '#' + id_editor + '_toolbar';
+    const baseKey = id_editor.split("_")[0];
+    const id_dragbar = '#' + baseKey + '_dragbar';
+    const id_wrapper = '#' + baseKey + '_wrapper';
+    const id_toolbar = '#' + baseKey + '_toolbar';
     
     let toolbar_height = 0;
     if ($(id_toolbar).length) {

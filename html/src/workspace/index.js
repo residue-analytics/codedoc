@@ -747,12 +747,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(resp);
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, iterations: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, iterations: [ {model_resp: err} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -773,12 +773,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
                 globals.outputEditor.setText(resp);
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: err} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -798,12 +798,13 @@ async function setLayout() {
       } else {
         UIUtils.addSpinnerToIconButton('SendFuncsToLLM');
         let all_resps = [];
-        globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [] };
-
+        globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [] };
+        // iterations - [{funcname: .., code: .., model_resp: ..}]
+        // this_resp = { funcname: .., model_resp: .. }
         for (const found_function of funcs) {
-          let this_resp = { filename: globals.editor.getFilename(), funcname: found_function.name };
+          let this_resp = { funcname: found_function.name };
           all_resps.push(this_resp);
-          globals.outputEditor.appendText(JSON.stringify(this_resp));
+          globals.outputEditor.appendText(`===== ${globals.editor.getFilename()} / ${found_function.name} =====`);
 
           params.code_snippet = globals.editor.getFunctionCode(found_function);
           //console.log(params.code_snippet);
@@ -812,8 +813,8 @@ async function setLayout() {
               this_resp.model_resp = "";
               console.log(found_function);
               globals.outputEditor.appendText("No code available for this function");
-              globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
-              globals.outputEditor.hiddenContent.code_resp.push({ code: "", model_resp: this_resp });
+              globals.outputEditor.appendText(`===== Processing Complete for [${found_function.name}] =====\n`);
+              globals.outputEditor.hiddenContent.iterations.push({ funcname: found_function.name, code: "", model_resp: "" });
               continue;
           }
           
@@ -821,20 +822,20 @@ async function setLayout() {
             let resp = await new LLMService().callLLM(params);
             this_resp.model_resp = resp;
             globals.outputEditor.appendText(resp);
-            globals.outputEditor.hiddenContent.code_resp.push({ code: params.code_snippet, model_resp: this_resp });
+            globals.outputEditor.hiddenContent.iterations.push({ funcname: found_function.name, code: params.code_snippet, model_resp: resp });
             //document.getElementById('ModelOutput').value = resp;
           } catch (err) {
             this_resp.model_err = err;
             globals.outputEditor.appendText(JSON.stringify(err));
-            globals.outputEditor.hiddenContent.code_resp.push({ code: params.code_snippet, model_resp: this_resp });
+            globals.outputEditor.hiddenContent.iterations.push({ funcname: found_function.name, code: params.code_snippet, model_err: err });
             //document.getElementById('ModelOutput').value = err;
           }
 
-          globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
+          globals.outputEditor.appendText(`===== Processing Complete for [${found_function.name}] =====\n`);
         }
 
         globals.outputEditor.appendText(JSON.stringify(all_resps));
-        globals.outputEditor.hiddenContent.llmParams.code_snippet = "";
+        globals.outputEditor.hiddenContent.llmParams.code_snippet = "";  // To nullify the code that is lingering in the params object
         UIUtils.rmSpinnerFromIconButton('SendFuncsToLLM');
       }
     });
@@ -858,12 +859,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
                 globals.outputEditor.setText(resp);
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
-                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
+                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: JSON.stringify(err)} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -927,7 +928,7 @@ function editor1setup() {
 
 function editor2setup() {
   console.log("editor2 setup");
-  globals.setEditor("editor2");
+  globals.setEditor("editor2_editor");
   globals.setModelOutputEditor("ModelOutput");
 }
 
