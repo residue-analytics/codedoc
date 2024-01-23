@@ -219,7 +219,7 @@ def get_params(llmID:str, current_user: Annotated[User, Depends(get_current_acti
     db_params = params_db.get_latest_by_name_username(llmID, current_user.username)
     if db_params:
         return  json.loads(db_params.data)
-    raise HTTPException(status_code=404, detail={'msg':f"Params for Model ID [{llmID}] not available"})
+    raise HTTPException(status_code=404, detail={'msg':f"No params for Model ID [{llmID}] saved by you"})
 
 @router.put("/params/{llmID}")
 def save_params(llmID: str, paramsnp: LLMParamsSnap, 

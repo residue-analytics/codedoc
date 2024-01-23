@@ -1,7 +1,7 @@
 
 import { LLMParams, LLMParamsSnap, FileTree } from "../js/models.js";
 import { ModelService, FilesService, LLMService, LLMParamsService } from "../js/services.js";
-import { AceEditor, AceEditorWithTree } from "../js/editors.js";
+import { AceEditor, AceEditorWithMenu, AceEditorWithTree } from "../js/editors.js";
 import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
 
 class LLMParamUIPair {
@@ -283,7 +283,17 @@ class PageGlobals {
   }
 
   setModelOutputEditor(editorID) {
-    this.outputEditor = new AceEditor(editorID);
+    this.outputEditor = new AceEditorWithMenu(editorID, null, {
+      text: 'LLM Output comes here, when you use the "Send **" buttons!!',
+      buttons: {
+        UndoFile: true,
+        RedoFile: true,
+        Beautify: true,
+        WordWrap: true,
+        ToggleFolding: true,
+        ShowHidden: true
+      }
+    });
     this.outputEditor.useWordWrap(true);
   }
 
@@ -597,6 +607,7 @@ var substringMatcher= function(strs) {
   };
 };
 
+
 async function setLayout() {
   globals = new PageGlobals();
 
@@ -647,7 +658,7 @@ async function setLayout() {
     });
 
     document.getElementById('WordWrapReadOnly').addEventListener('click', function () {
-      globals.readOnlyEditor.editor.toggleWordWrap();
+      globals.readOnlyEditor.toggleWordWrap();
     });
 
     $('#scrollable-dropdown-menu .typeahead').bind('typeahead:select', function(ev, suggestion) {
@@ -719,7 +730,7 @@ async function setLayout() {
     document.getElementById('ParseFile').addEventListener('click', function () {
       const funcs = globals.editor.getTopLevelFunctionsFromCode();
       UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
-      console.log(funcs);
+      //console.log(funcs);
     });
 
     document.getElementById('SendToLLM').addEventListener('click', function () {
@@ -736,10 +747,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(resp);
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -760,10 +773,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
                 globals.outputEditor.setText(resp);
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });
@@ -783,6 +798,8 @@ async function setLayout() {
       } else {
         UIUtils.addSpinnerToIconButton('SendFuncsToLLM');
         let all_resps = [];
+        globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [] };
+
         for (const found_function of funcs) {
           let this_resp = { filename: globals.editor.getFilename(), funcname: found_function.name };
           all_resps.push(this_resp);
@@ -796,6 +813,7 @@ async function setLayout() {
               console.log(found_function);
               globals.outputEditor.appendText("No code available for this function");
               globals.outputEditor.appendText(`${"=".repeat(5)} Processing Complete for [${found_function.name}] ${"=".repeat(5)}\n`);
+              globals.outputEditor.hiddenContent.code_resp.push({ code: "", model_resp: this_resp });
               continue;
           }
           
@@ -803,10 +821,12 @@ async function setLayout() {
             let resp = await new LLMService().callLLM(params);
             this_resp.model_resp = resp;
             globals.outputEditor.appendText(resp);
+            globals.outputEditor.hiddenContent.code_resp.push({ code: params.code_snippet, model_resp: this_resp });
             //document.getElementById('ModelOutput').value = resp;
           } catch (err) {
             this_resp.model_err = err;
             globals.outputEditor.appendText(JSON.stringify(err));
+            globals.outputEditor.hiddenContent.code_resp.push({ code: params.code_snippet, model_resp: this_resp });
             //document.getElementById('ModelOutput').value = err;
           }
 
@@ -814,6 +834,7 @@ async function setLayout() {
         }
 
         globals.outputEditor.appendText(JSON.stringify(all_resps));
+        globals.outputEditor.hiddenContent.llmParams.code_snippet = "";
         UIUtils.rmSpinnerFromIconButton('SendFuncsToLLM');
       }
     });
@@ -837,10 +858,12 @@ async function setLayout() {
             .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
                 globals.outputEditor.setText(resp);
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
             }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
+                globals.outputEditor.hiddenContent = { llmParams: params, code_resp: [ {model_resp: JSON.stringify(err)} ] };
                 //document.getElementById('ModelOutput').value = err;
             });
     });

@@ -165,7 +165,8 @@ window.draggingAceEditor = {};
 class AceEditor {
   // Keyboard shortcuts - https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts
   constructor(editorID) {
-    this.editor = ace.edit(editorID);
+    this.editorID = editorID;
+    this.editor = ace.edit(this.editorID);
     ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/");
     this.editor.setTheme("ace/theme/monokai");
     this.curFile = null;
@@ -174,6 +175,7 @@ class AceEditor {
     this.beautifier = ace.require("ace/ext/beautify");
 
     this.codeFolding = false;
+    this.hiddenContent = null;  // Just a placeholder to cache some data, like chat completion input data
   }
 
   destroy() {
@@ -532,18 +534,18 @@ class TreeView {
   }
 }
 
-class AceEditorWithTree {
+class AceEditorWithTree extends AceEditor {
   static FILE = Tree.FILE;
   static FOLDER = Tree.FOLDER;
 
   constructor(treeID, editorID, editableFiles=true) {
+    super(editorID);
+
     this.treeID = treeID;
-    this.editorID = editorID;
     this.editableFiles = editableFiles;
 
     this.tree = new TreeView(this.treeID);
-    this.editor = new AceEditor(this.editorID);
-    this.editor.setReadOnly(!this.editableFiles);
+    this.setReadOnly(!this.editableFiles);
     this.treeCallback = null;
     this.filelist = null;
   }
@@ -552,8 +554,7 @@ class AceEditorWithTree {
     if (this.tree) {
       this.tree.destroy();
       this.tree = null;
-      this.editor.destroy();
-      this.editor = null;
+      super.destroy();
     }
   }
 
@@ -562,7 +563,7 @@ class AceEditorWithTree {
       selectActionCB = (filepath, type) => {
         if (type == AceEditorWithTree.FILE) {
           //console.log("Editable [" + this.editableFiles + "] File set from TreeEditor [" + filepath + "]");
-          this.editor.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
+          this.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
         }
       };
     }
@@ -591,4 +592,117 @@ class AceEditorWithTree {
   }
 }
 
-export { VanillaEditor, AceEditor, AceEditorWithTree }
+class AceEditorWithMenu extends AceEditor {
+  constructor(baseKey, parent=null, options={}) {
+    const [toolbarElem, editorElem, dragbarElem] = 
+      AceEditorWithMenu.createEditorWithDynamicIds(baseKey, parent ? parent : document.getElementById(baseKey), options);
+
+    super(editorElem.id);
+
+    this.baseKey = baseKey;
+    this.parent = parent;
+    this.options = options;
+
+    this.toolbarElem = toolbarElem;
+    this.editorElem = editorElem;
+    this.dragbarElem = dragbarElem;
+
+    this.createButtonsInToolbar(this.baseKey, this.toolbarElem, this.options);
+  }
+
+  createButtonsInToolbar(baseKey, toolbar, options) {
+    // Button group
+    const btnGroup = document.createElement('div');
+    btnGroup.className = 'btn-group';
+    btnGroup.setAttribute('role', 'group');
+
+    // Button definitions
+    const buttonDefs = {
+      UndoFile: { title: 'Undo the last change', icon: 'bi-arrow-counterclockwise', handler: () => this.undo() },
+      RedoFile: { title: 'Redo the last Undo', icon: 'bi-arrow-clockwise', handler: () => this.redo() },
+      Beautify: { title: 'Beautify / Format the code', icon: 'bi-text-indent-left' , handler: () => this.beautify()},
+      WordWrap: { title: 'Use Word Wrap', icon: 'bi-text-wrap', toggle: true, handler: () => this.toggleWordWrap() },
+      ToggleFolding: { title: 'Toggle Code Folding', icon: 'bi-arrows-collapse', toggle: true, handler: () => this.toggleCodeFolding() },
+      Discard:  { title: 'Reload last version of the file discarding all the unsaved changes', icon: 'bi-file-earmark-arrow-up', handler: () => this.discardChanges() },
+      NewFile: { title: 'Create a new file on the server', icon: 'bi-file-earmark-plus', handler: function() {console.log("NewFile")} },
+      SaveFile: { title: 'Save the changed file as a new Version on server', icon: 'bi-floppy', handler: null },
+      ParseFile: { title: 'Extract functions from the file', icon: 'bi-braces', handler: null },
+      ShowHidden: { title: 'Dump completion as JSON', icon: 'bi-filetype-json', handler: () => this.setText(JSON.stringify(this.hiddenContent)) }
+    };
+  
+    // Create and append buttons to the group
+    if (options.buttons) {
+      Object.entries(options.buttons).forEach( ([key, value]) => {
+        if (typeof(value) == 'boolean') {
+          value && btnGroup.appendChild(this.createButton(baseKey, key, buttonDefs[key].title, buttonDefs[key].icon, buttonDefs[key].toggle, buttonDefs[key].handler));
+        } else {
+          btnGroup.appendChild(this.createButton(baseKey, key, value.title, value.icon, value.toggle, value.handler));
+        }
+      });
+    }
+  
+    // Append the button group to the toolbar
+    toolbar.appendChild(btnGroup);
+  }
+
+  // Helper function to create a button
+  createButton(baseKey, idSuffix, title, iconClass, toggle, handler) {
+    const button = document.createElement('button');
+    button.id = `${baseKey}_${idSuffix}`;
+    button.type = 'button';
+    button.className = 'btn btn-sm text-light';
+    button.title = title;
+    if (toggle) {
+      button.setAttribute('data-bs-toggle', 'button');
+    }
+    if (handler) {
+      button.addEventListener('click', handler);
+    }
+    const icon = document.createElement('span');
+    icon.className = `bi ${iconClass}`;
+    button.appendChild(icon);
+    return button;
+  }
+
+  static createEditorWithDynamicIds(baseKey, parent, options) {
+    // Wrapper div
+    const wrapper = document.createElement('div');
+    wrapper.id = `${baseKey}_wrapper`;
+  
+    // Toolbar div
+    const toolbar = document.createElement('div');
+    toolbar.id = `${baseKey}_toolbar`;
+    toolbar.className = 'btn-toolbar justify-content-between aceeditor_cmdbar';
+    toolbar.setAttribute('role', 'toolbar');
+    toolbar.setAttribute('aria-label', 'Editor toolbar with button groups');
+  
+    // Editor div
+    const editor = document.createElement('div');
+    editor.id = `${baseKey}_editor`;
+    editor.className = 'app_editor';
+    editor.textContent = options.text ? options.text : "";
+  
+    // Dragbar div
+    const dragbarContainer = document.createElement('div');
+    dragbarContainer.className = 'd-flex justify-content-center';
+    
+    const dragbar = document.createElement('div');
+    dragbar.id = `${baseKey}_dragbar`;
+    dragbar.className = 'app_editor_dragbar';
+    dragbarContainer.appendChild(dragbar);
+  
+    // Append everything to the wrapper
+    wrapper.appendChild(toolbar);
+    wrapper.appendChild(editor);
+    wrapper.appendChild(dragbarContainer);
+  
+    // Finally, append the wrapper to the document body or any other container element
+    parent.appendChild(wrapper);
+
+    return [toolbar, editor, dragbar];
+  }
+  
+  
+}
+
+export { VanillaEditor, AceEditor, AceEditorWithTree, AceEditorWithMenu }
