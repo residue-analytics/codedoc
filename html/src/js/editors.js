@@ -406,6 +406,16 @@ class AceEditor {
     this.codeFolding = false;
   }
 
+  toggleHiddenContent() {
+    let hidden = this.hiddenContent;
+    this.hiddenContent = this.getCode();
+    if (hidden instanceof Object) {
+      this.setText(JSON.stringify(hidden));
+    } else {
+      this.setText(hidden);
+    }
+  }
+
   getTopLevelFunctionsFromCode() {
     if (!this.curFile) {
       UIUtils.showAlert("erroralert", "No File Loaded in Editor");
@@ -628,7 +638,7 @@ class AceEditorWithMenu extends AceEditor {
       NewFile: { title: 'Create a new file on the server', icon: 'bi-file-earmark-plus', handler: function() {console.log("NewFile")} },
       SaveFile: { title: 'Save the changed file as a new Version on server', icon: 'bi-floppy', handler: null },
       ParseFile: { title: 'Extract functions from the file', icon: 'bi-braces', handler: null },
-      ShowHidden: { title: 'Dump completion as JSON', icon: 'bi-filetype-json', handler: () => this.setText(JSON.stringify(this.hiddenContent)) }
+      ShowHidden: { title: 'Toggle between completion JSON and Model output', icon: 'bi-filetype-json', toggle: true, handler: () => this.toggleHiddenContent() }
     };
   
     // Create and append buttons to the group
@@ -702,8 +712,6 @@ class AceEditorWithMenu extends AceEditor {
 
     return [toolbar, editor, dragbar];
   }
-  
-  
 }
 
 export { VanillaEditor, AceEditor, AceEditorWithTree, AceEditorWithMenu }
