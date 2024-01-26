@@ -730,6 +730,11 @@ async function setLayout() {
     document.getElementById('ParseFile').addEventListener('click', function () {
       const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
       UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
+      for (const found_function of funcs) {
+        //let code_snippet = globals.editor.getFunctionCode(found_function);
+        console.log(found_function.name);
+        //console.log(code_snippet);
+      }
       //console.log(funcs);
     });
 

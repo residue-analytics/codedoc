@@ -377,7 +377,7 @@ class AceEditor {
   }
 
   getFunctionCode(parsedFunc) {  // parsedFunc object returned from getTopLevelFunctionsFromCode()
-    return this.getCodeRange(parsedFunc.loc.start.line, parsedFunc.loc.end.line).join("\n");
+    return this.getCodeRange(parsedFunc.loc.start.line + parsedFunc.lineOffset, parsedFunc.loc.end.line + parsedFunc.lineOffset).join("\n");
   }
 
   getCurFile() {
@@ -428,22 +428,36 @@ class AceEditor {
     }
 
     let funcDecls = [];
+    let codeToParse = null, lineOffset = 0;
     try {
-      const parsedCode = esprima.parseModule(
-        useSelectedIf && this.getSelectedCode().length ? this.getSelectedCode() : this.getCode(), 
-        { range: true, loc: true, tolerant: true, comment: true }
-      );
+      if (useSelectedIf) {
+        let selectedRange = this.editor.getSelectionRange();
+        console.log(selectedRange);
+        if (selectedRange.start.row == selectedRange.end.row && selectedRange.start.column == selectedRange.end.column) {
+          // Nothing is selected
+          console.log("Nothing selected");
+          codeToParse = this.getCode();
+        } else {
+          codeToParse = this.getSelectedCode();
+          lineOffset = selectedRange.start.row; // starts at 0 index
+        }
+      } else {
+        codeToParse = this.getCode();
+      }
+      
+      console.log(codeToParse, lineOffset);
+      const parsedCode = esprima.parseModule(codeToParse, { range: true, loc: true, tolerant: true, comment: true });  // esprima loc starts at 1 unlike an array
 
       if (parsedCode.body && parsedCode.body.length > 0) {
         parsedCode.body.forEach(node => {
           if (node.type.includes("FunctionDeclaration")) {
             // function() { }
-            funcDecls.push({name: node.id.name, loc: node.loc});
+            funcDecls.push({name: node.id.name, loc: node.loc, lineOffset: lineOffset});
           } else if (node.type === "ExpressionStatement" && 
                      node.expression.type === "AssignmentExpression" &&
                      node.expression.right.type.includes("FunctionExpression")) {
             // obj.prop = function() { }
-            const funcObj = { name: "", loc: node.loc };
+            const funcObj = { name: "", loc: node.loc, lineOffset: lineOffset };
             if (node.expression.left.object) {
               funcObj.name += node.expression.left.object.name;
             }
@@ -455,7 +469,7 @@ class AceEditor {
             // var variable = function () { }
             for (const decl of node.declarations) {
               if (decl.init && decl.init.type.includes("FunctionExpression")) {
-                funcDecls.push({ name: decl.id.name, loc: node.loc });
+                funcDecls.push({ name: decl.id.name, loc: node.loc, lineOffset: lineOffset });
               }
             }
           }
