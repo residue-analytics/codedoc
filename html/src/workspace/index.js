@@ -728,7 +728,7 @@ async function setLayout() {
     });
 
     document.getElementById('ParseFile').addEventListener('click', function () {
-      const funcs = globals.editor.getTopLevelFunctionsFromCode();
+      const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
       UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
       //console.log(funcs);
     });
@@ -792,7 +792,7 @@ async function setLayout() {
 
       globals.outputEditor.setText("");
 
-      const funcs = globals.editor.getTopLevelFunctionsFromCode();
+      const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
       if (funcs.length === 0) {
         UIUtils.showAlert("erroralert", "No functions found in the code");
       } else {

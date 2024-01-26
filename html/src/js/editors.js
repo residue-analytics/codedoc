@@ -416,7 +416,7 @@ class AceEditor {
     }
   }
 
-  getTopLevelFunctionsFromCode() {
+  getTopLevelFunctionsFromCode(useSelectedIf=false) {
     if (!this.curFile) {
       UIUtils.showAlert("erroralert", "No File Loaded in Editor");
       return;
@@ -429,7 +429,11 @@ class AceEditor {
 
     let funcDecls = [];
     try {
-      const parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, comment: true });
+      const parsedCode = esprima.parseModule(
+        useSelectedIf && this.getSelectedCode().length ? this.getSelectedCode() : this.getCode(), 
+        { range: true, loc: true, tolerant: true, comment: true }
+      );
+
       if (parsedCode.body && parsedCode.body.length > 0) {
         parsedCode.body.forEach(node => {
           if (node.type.includes("FunctionDeclaration")) {
