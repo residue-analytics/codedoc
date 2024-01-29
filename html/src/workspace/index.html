@@ -8,13 +8,18 @@
               <input class="typeahead" type="text" placeholder="File Search">
             </div>
             <button id="ToggleTreeReadOnly" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
-              title="Toggle Directory Tree">
+              title="Show/Hide Directory Tree">
               <span class="bi bi-arrow-left-right"></span>
+            </button>
+            <button id="SwitchReadOnlyTree" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
+              title="Switch Read/Write Directory Trees">
+              <span class="bi bi-signpost-split"></span>
             </button>
             <button id="WordWrapReadOnly" type="button" class="btn btn-sm text-light" data-bs-toggle="button"
               title="Use Word Wrap">
               <span class="bi bi-text-wrap"></span>
             </button>
+            
           </div>
         </div>
         <div>
@@ -304,6 +309,23 @@ Select a file in the folder tree view, to view it here.
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="NewFilenameModal" tabindex="-1" class="modal fade">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Full Path & Name of the New File?</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <textarea class="form-control" id="NewFilenameModalText" rows="3"></textarea>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
           </div>
         </div>
       </div>

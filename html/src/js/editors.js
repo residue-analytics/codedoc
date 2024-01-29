@@ -271,6 +271,7 @@ class AceEditor {
       if (showVersion) {
         UIUtils.showAlert("erroralert", `Version [${file.version}] of file [${file.name}] is in the Editor`);
       }
+
       this.editor.session.setValue(file.content);
       this.setEditMode(file.name);
       this.curFile = file;
@@ -289,7 +290,7 @@ class AceEditor {
         this.curFile = null;
         this.codeFolding = false;
       }
-      this.editFile(filepath, editable, showVersion);  // We don't have any file now, call myself again
+      await this.editFile(filepath, editable, showVersion);  // We don't have any file now, call myself again
     }
   }
 
@@ -382,6 +383,22 @@ class AceEditor {
 
   getCurFile() {
     return new CodeFile(this.curFile.name, this.curFile.version, this.getCode());
+  }
+
+  setNewFile(codeFile) {
+    if (this.curFile !== null && this.curFile.content != this.getCode()) {
+      UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
+      return;
+    }
+    if (codeFile.name === null || codeFile.name.length === 0) {
+      throw new Error("Invalid Filename");
+    }
+
+    this.curFile = new CodeFile(codeFile.name, codeFile.version, codeFile.content);
+    this.editor.session.setValue(this.curFile.content);
+    this.setEditMode(this.curFile.name);    
+    this.fileCache.put(this.curFile);
+    this.codeFolding = false;
   }
 
   hasCodeFolded() {
@@ -605,7 +622,10 @@ class AceEditorWithTree extends AceEditor {
   }
 
   reloadTree(fileList) {  // TODO: Remove the Event Listeners on the parent
-    this.destroy();
+    if (this.tree) {
+      this.tree.destroy();
+      this.tree = null;
+    }
     this.tree = new TreeView(this.treeID);
     this.initialize(fileList);
     this.setupSelectListener(this.treeCallback);

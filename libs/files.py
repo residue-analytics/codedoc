@@ -82,7 +82,7 @@ def get_file(file_path: str, current_user: Annotated[User, Depends(get_current_a
         if raw:
             return FileResponse(str(filepath))    # FastAPI to return proper content headers
         else:
-            return File(name=file_path, content=filepath.read_text())
+            return File(name=file_path, version=get_version(filepath), content=filepath.read_text())
     elif findVersionedFile:
         # Try to find the versioned files
         most_recent_file = get_editable_file(filepath)
@@ -167,7 +167,7 @@ def save_file(dir_path: str, fileData: File, request: Request,
         raise HTTPException(status_code=409, detail={'msg': f"File [{fileData.name}] with new version [{newVer}] already exists."})
 
     # Create the directory structure, don't raise exceptions if paths exist
-    newfilepath.parent.mkdir(mode=0o644, parents=True, exist_ok=True)
+    newfilepath.parent.mkdir(mode=0o744, parents=True, exist_ok=True)
 
     try:
         newfilepath.touch(mode=0o644, exist_ok=False)  # Raises FileExistsError if file already exists (expecting this to take care of any race conditions too)

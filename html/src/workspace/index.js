@@ -1,5 +1,5 @@
 
-import { LLMParams, LLMParamsSnap, FileTree } from "../js/models.js";
+import { LLMParams, LLMParamsSnap, CodeFile } from "../js/models.js";
 import { ModelService, FilesService, LLMService, LLMParamsService } from "../js/services.js";
 import { AceEditor, AceEditorWithMenu, AceEditorWithTree } from "../js/editors.js";
 import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
@@ -226,6 +226,7 @@ class LLMParamsUI {
 class PageGlobals {
   constructor() {
     this.readOnlyEditor = null;
+    this.showingEditableTree = false;
     this.editor = null;
     this.outputEditor = null;
     this.llmSelector = null;
@@ -324,6 +325,20 @@ class PageGlobals {
       } catch (err) {
         console.log(err);
       }
+  }
+
+  async toggleReadOnlyEditorTree() {
+    try {
+      await new FilesService().getFiles(null, !this.showingEditableTree).then(
+        fileList => {
+              this.readOnlyEditor.reloadTree(fileList);
+              this.showingEditableTree = !this.showingEditableTree;
+        }
+      );
+    } catch (err) {
+      UIUtils.showAlert("Unable to toggle the tree");
+      console.log(err);
+    }
   }
 
   loadDataOnMain() {
@@ -661,6 +676,10 @@ async function setLayout() {
       globals.readOnlyEditor.toggleWordWrap();
     });
 
+    document.getElementById('SwitchReadOnlyTree').addEventListener('click', function () {
+      globals.toggleReadOnlyEditorTree();
+    });
+
     $('#scrollable-dropdown-menu .typeahead').bind('typeahead:select', function(ev, suggestion) {
       console.log('Selection: ' + suggestion);
       globals.readOnlyEditor.showFile(suggestion);
@@ -705,6 +724,22 @@ async function setLayout() {
 
     document.getElementById('SelectionToCtx').addEventListener('click', function (event) {
       globals.llmParamsUI.addToContextParam(globals.editor.getSelectedCode());
+    });
+
+    document.getElementById('NewFile').addEventListener('click', function (e) {
+      const filenameModal = new bootstrap.Modal("#NewFilenameModal");
+      filenameModal.show();
+    });
+
+    $("#NewFilenameModal .modal-footer .btn").on('click', function() {
+      const filename = $("#NewFilenameModalText").val();
+      try {
+        globals.editor.setNewFile(new CodeFile(filename, 0, ""));  // Set new CodeFile in the Editor, don't save yet
+      } catch (err) {
+        UIUtils.showAlert("erroralert", err);
+      }
+
+      UIUtils.showAlert("erroralert", `Update the contents of [${filename}] and then save to create the first version.`);
     });
 
     document.getElementById('SaveFile').addEventListener('click', function () {
