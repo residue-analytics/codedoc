@@ -271,6 +271,10 @@ class PageGlobals {
       console.log(`Clicked on [${name}] of type [${type}]`);
     });
 
+    this.setupFileSearch();
+  }
+
+  setupFileSearch() {
     // Setup the File Search
     $('#scrollable-dropdown-menu .typeahead').typeahead({
       hint: true,
@@ -333,6 +337,11 @@ class PageGlobals {
         fileList => {
               this.readOnlyEditor.reloadTree(fileList);
               this.showingEditableTree = !this.showingEditableTree;
+
+              // Reinitialize typeahead, File Search
+              $('#scrollable-dropdown-menu .typeahead').typeahead('destroy');
+
+              this.setupFileSearch();
         }
       );
     } catch (err) {
