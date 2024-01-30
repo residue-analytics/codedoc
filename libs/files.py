@@ -145,7 +145,8 @@ def save_file(dir_path: str, fileData: File, request: Request,
             
         curVer = int(split_name[-1])
         newVer = curVer + 1
-        newfilepath = Path(OUTPUT_CODE_DIR + "/" + dir_path.name + "/" + base_name + "." + str(newVer))
+        temp = base_name + "." + str(newVer)
+        newfilepath = Path(OUTPUT_CODE_DIR) / dir_path / temp
     elif split_name[-2].isdigit():
         # With suffix filename, having a version as second last
         if not Path(OUTPUT_CODE_DIR + "/" + fileData.name).exists():
@@ -159,7 +160,8 @@ def save_file(dir_path: str, fileData: File, request: Request,
     else:
         # There is no version in the filename and there are more than 1 parts in the filename
         newVer = 1
-        newfilepath = Path(OUTPUT_CODE_DIR + "/" + dir_path.name + "/" + base_name + "." + str(newVer) + suffix)
+        temp = base_name + "." + str(newVer) + suffix
+        newfilepath = Path(OUTPUT_CODE_DIR) / dir_path / temp
 
         #raise HTTPException(status_code=406, detail={'msg': f"File [{fileData.name}] not satisfying the versioning structure"})
 
