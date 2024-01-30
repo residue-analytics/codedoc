@@ -390,8 +390,8 @@ class AceEditor {
       UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
       return;
     }
-    if (codeFile.name === null || codeFile.name.length === 0) {
-      throw new Error("Invalid Filename");
+    if (codeFile.name === null || codeFile.name.length === 0 || codeFile.name.includes(" ")) {
+      throw new Error("Invalid Filename, null or has spaces");
     }
 
     this.curFile = new CodeFile(codeFile.name, codeFile.version, codeFile.content);

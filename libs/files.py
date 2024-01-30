@@ -3,9 +3,9 @@
 __version__ = "0.1"
 __author__  = "Shalin Garg"
 
-from typing import Annotated
+from typing              import Annotated
 from pathlib             import Path
-
+from natsort             import os_sorted
 from fastapi             import Depends, APIRouter, Request, HTTPException
 from fastapi.responses   import FileResponse
 
@@ -58,7 +58,7 @@ def get_dirlist(current_user: Annotated[User, Depends(get_current_active_user)],
                     files_paths.append(file.relative_to(basedir).as_posix())
         # files = os.listdir("./" + dir_path)
         #files_paths = sorted([f"{request.url._url}/{f}" for f in files if not (f.startswith('.') or f.startswith('_'))])
-        return {'dirname': "/", 'files': files_paths}
+        return {'dirname': "/", 'files': os_sorted(files_paths)}
     else:
         raise HTTPException(status_code=404, detail={'msg': f"Could not read {filepath.name}"})
 
