@@ -162,7 +162,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)],
         if expires < datetime.now(timezone.utc):
             raise credentials_exception
 
-        if expires - datetime.now(timezone.utc) < timedelta(minutes=30):
+        if expires - datetime.now(timezone.utc) < timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES):
             # token expiring within 30 minutes, reissue a new one
             access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
             access_token = create_access_token(
