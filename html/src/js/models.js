@@ -207,10 +207,11 @@ class LLMParamsHistory {
 }
 
 class CodeFile {
-  constructor(name, version = 0, content = null) {
+  constructor(name, version = 0, content = null, commit = null) {
     this.name = name;
     this.version = version == null ? 0 : version;
     this.content = content;
+    this.commit = commit
     this.llmParams = null;
   }
 
@@ -218,7 +219,8 @@ class CodeFile {
     return {
       name: this.name,
       version: this.version,
-      content: this.content
+      content: this.content,
+      commit: this.commit
     };
   }
 
@@ -226,7 +228,8 @@ class CodeFile {
     return new CodeFile(
       json.name,
       json.version,
-      json.content
+      json.content,
+      json.commit
     );
   }
 }

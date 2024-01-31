@@ -759,7 +759,7 @@ async function setLayout() {
                 UIUtils.rmSpinnerFromIconButton('SaveFile');
                 codeFile.content = globals.editor.getCode();
                 globals.editor.curFileSavedSuccessfully(codeFile);
-                UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}]`);
+                UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}] and commit [${codeFile.commit}]`);
               })
               .catch((err) => {
                 UIUtils.rmSpinnerFromIconButton('SaveFile');

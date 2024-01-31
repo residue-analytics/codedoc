@@ -48,7 +48,7 @@ parser.add_argument("--odir", default="./newcode", help="Directory to save modif
 parser.add_argument("--html", default="./html/src", help="Static Content directory path")
 parser.add_argument("--port", type=int, default="8000", help="Port to listen on")
 parser.add_argument("--useHTTPS", action='store_true', help="Enable HTTPS")
-
+parser.add_argument("--workers", type=int, default="1", help="Number of Worker processes to start")
 args = parser.parse_args()
 
 files.INPUT_CODE_DIR = args.idir
@@ -241,9 +241,10 @@ def checkEnviron():
     if not res:
         exit(1)
 
-if args.useHTTPS:
-    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-    ssl_context.load_cert_chain('./cert.pem', keyfile='./key.pem')
-    uvicorn.run(app, host="0.0.0.0", port=args.port, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem")
-else:
-    uvicorn.run(app, host="0.0.0.0", port=args.port)
+if __name__ == "__main__":
+    if args.useHTTPS:
+        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        ssl_context.load_cert_chain('./cert.pem', keyfile='./key.pem')
+        uvicorn.run("serve:app", host="0.0.0.0", port=args.port, ssl_keyfile="./key.pem", ssl_certfile="./cert.pem", workers=args.workers)
+    else:
+        uvicorn.run("serve:app", host="0.0.0.0", port=args.port, workers=args.workers)

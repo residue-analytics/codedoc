@@ -1,5 +1,6 @@
 cryptography
 uvicorn[standard]
+gunicorn
 sse_starlette
 fastapi
 langchain
@@ -22,3 +23,4 @@ pandas
 tiktoken
 esprima
 natsort
+PyGithub

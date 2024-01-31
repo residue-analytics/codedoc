@@ -52,6 +52,7 @@ class File(BaseModel):
     name: str           # loc/loc/program_name.ver.js ver=1, 2, 3
     version: int | None = None
     content: str | None = None # file content
+    commit: str | None = None  # Git Commit Hash
 
 class LLMParamsSnap(BaseModel):
     tm: int
