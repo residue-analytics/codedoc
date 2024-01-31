@@ -196,7 +196,7 @@ def save_file(dir_path: str, fileData: File, request: Request,
         newName = ".".join(split_name)
         newfilepath = Path(OUTPUT_CODE_DIR + "/" + str(file_path.with_name(newName)))
 
-        split_name[-2] = ""    # Remove the version number
+        split_name.pop(-2)    # Remove the version number
         newName = ".".join(split_name)
         filename_wo_ver = file_path.with_name(newName).as_posix()
     else:
@@ -224,6 +224,7 @@ def save_file(dir_path: str, fileData: File, request: Request,
     # Update git as well
     if reponame and len(reponame) > 0:
         try:
+            #print("Checking in to GIT " + filename_wo_ver)
             fileData.commit = githubAPI.create_or_update_file(reponame, filename_wo_ver, fileData.content, repobranch,
                 f"Updating versioned file [{newfilepath.relative_to(OUTPUT_CODE_DIR).as_posix()}]",
                 current_user.fullname, current_user.email)

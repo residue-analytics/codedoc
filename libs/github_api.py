@@ -69,6 +69,7 @@ class GithubAPI:
     contents = repo.get_contents(filename)
     if self.compare_contents(new_contents, contents.decoded_content):
       # Both are same, no changes to commit
+      print("No change in contents, skipping Git Commit")
       return None
     
     resp = repo.update_file(filename, commitmsg, new_contents, contents.sha, branch, committer)
