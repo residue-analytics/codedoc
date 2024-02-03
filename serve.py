@@ -65,22 +65,35 @@ class CommaSeparatedListOutputParser(BaseOutputParser[List[str]]):
         """Parse the output of an LLM call."""
         return text.strip().split(", ")
 
-def format_prompt(for_llm: bool, sys_mesg: str, ctxt: str, code: str, user_msg: str, history: str=None):
-    user_prompt = PromptTemplate(
-        template="History: {history}\n\nContext:{ctxt}\n\nCode:{code}\n\nUse the above provided Context & Code to fulfil the below request.\n{user}",
-        input_variables=['history', 'ctxt', 'code', 'user']
-    )
-    user_message = user_prompt.format(history=history, ctxt=ctxt, code=code, user=user_msg)
+def format_prompt(for_llm: bool, sys_mesg: str, ctxt: str, code: str, user_msg: str, history: List[ChatExchange]=None):
+    
     if for_llm:
+        user_prompt = PromptTemplate(
+            template="Context:{ctxt}\n\nCode:{code}\n\nUse the above provided Context & Code to fulfil the below request.\n{user}",
+            input_variables=['ctxt', 'code', 'user']
+        )
+
+        user_message = user_prompt.format(ctxt=ctxt, code=code, user=user_msg)
         if sys_mesg:
             return sys_mesg + "\n\n" + user_message
         else:
             return user_message
     else:
+        user_prompt = PromptTemplate(
+            template="\n\nContext:{ctxt}\n\nCode:{code}\n\n",
+            input_variables=['ctxt', 'code']
+        )
+
+        user_message = user_prompt.format(ctxt=ctxt, code=code)
         messages = [
-            SystemMessage(content=sys_mesg),
-            HumanMessage(content=user_message)
+            SystemMessage(content=sys_mesg + user_message)
         ]
+        if history is not None:
+            for exchg in history:
+                messages.append(HumanMessage(content=exchg.user))
+                messages.append(AIMessage(content=exchg.ai))
+
+        messages.append(HumanMessage(content="Use the above provided Context, history & Code to fulfil the below request.\n" + user_msg))
         return messages
     
 set_verbose(True)
@@ -125,10 +138,59 @@ add_routes(
     path="/gem_chain",
 )
 
+@app.post("/chat/")
+async def chat_llm(chat: ChatMessage,
+                   current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
+    params = chat.params
+    model_obj = MODELS.get(chat.params.llmID)
+    if model_obj is None:
+        raise HTTPException(status_code=404, detail={'msg':f"Model ID {params.llmID} not available"})
+
+    kwargs = copy.deepcopy(model_obj['model_kwargs'])
+    kwargs['temperature'] = params.temperature
+    kwargs['max_new_tokens'] = params.max_new_tokens
+    kwargs['topp_nucleus_sampling'] = params.topp_nucleus_sampling
+    if params.topk is not None and 'topk' in kwargs:
+        kwargs['topk'] = params.topk
+    if params.repetition_penalty is not None and 'repetition_penalty' in kwargs:
+        kwargs['repetition_penalty'] = params.repetition_penalty
+    if params.presence_penalty is not None and 'presence_penalty' in kwargs:
+        kwargs['presence_penalty'] = params.presence_penalty
+    if 'system_prompt' in kwargs:
+        kwargs['system_prompt'] = params.system_prompt
+
+    if model_obj['provider'] == 'AzureChatOpenAI':
+        model = AzureChatOpenAI(
+            openai_api_key=model_obj['api-key'],
+            deployment_name=model_obj['id_for_prvdr'],
+            model_name=model_obj['id_for_prvdr'],
+            openai_api_version=model_obj['api_version'],
+            azure_endpoint=model_obj['endpoint'],
+            temperature=kwargs['temperature'], max_tokens=kwargs['max_new_tokens'], 
+            model_kwargs={ "top_p": kwargs['topp_nucleus_sampling'], 
+            "frequency_penalty": kwargs['repetition_penalty'], 
+            "presence_penalty": kwargs['presence_penalty'] }
+        )
+        message = format_prompt(False, params.system_prompt, params.context, params.code_snippet, params.user_prompt, chat.history)
+        model_resp = None
+        try:
+            model_resp = model(message)
+            if isinstance(model_resp, AIMessage):
+                return { 'model_resp': str(model_resp.content) }
+            else:
+                return { 'model_resp': str(model_resp) }
+        except openai.BadRequestError as excp:
+            return { 'model_resp': str(excp) }
+        except Exception as e:
+            return { 'model_resp': str(e) }
+    else:
+        raise HTTPException(status_code=404, detail={'msg':f"Model Provider {model_obj['provider']} not available"})
+
+
 @app.post("/llm/")
 async def call_llm(params: LLMParams,
                    current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
-    # initialize Spaces LLM
+
     model_obj = MODELS.get(params.llmID)
     if model_obj is None:
         raise HTTPException(status_code=404, detail={'msg':f"Model ID {params.llmID} not available"})
@@ -221,7 +283,7 @@ async def call_llm(params: LLMParams,
                 'model_resp': str(local_llm(local_prompt.invoke({'ctxt':params.context, 'code':params.code_snippet, 'user':params.user_prompt}).to_string()))
             }
     else:
-        raise HTTPException(status_code=404, detail={'msg':f"Model Provider {params['provider']} not available"})
+        raise HTTPException(status_code=404, detail={'msg':f"Model Provider {model_obj['provider']} not available"})
 
     local_prompt = PromptTemplate(
             template=local_template,

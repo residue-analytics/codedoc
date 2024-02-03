@@ -7,7 +7,7 @@ from typing    import List
 from pydantic  import BaseModel
 import os
 
-__all__ = ["EnvVars", "LLMParams", "File", "LLMParamsSnap", "LLMParamsHistory"]
+__all__ = ["EnvVars", "LLMParams", "File", "LLMParamsSnap", "LLMParamsHistory", "ChatMessage", "ChatExchange"]
 
 class EnvVars:
     @classmethod
@@ -47,6 +47,14 @@ class LLMParams(BaseModel):
     context: str | None = None
     code_snippet: str | None = None
     user_prompt: str
+
+class ChatExchange(BaseModel):
+    user: str
+    ai: str
+
+class ChatMessage(BaseModel):
+    params: LLMParams
+    history: List[ChatExchange]
 
 class File(BaseModel):
     name: str           # loc/loc/program_name.ver.js ver=1, 2, 3

@@ -1,6 +1,6 @@
 
-import { LLMParams, LLMParamsSnap, CodeFile } from "../js/models.js";
-import { ModelService, FilesService, LLMService, LLMParamsService } from "../js/services.js";
+import { LLMParams, LLMParamsSnap, CodeFile, ChatMessage, ChatExchange } from "../js/models.js";
+import { ModelService, FilesService, LLMService, LLMParamsService, ChatService } from "../js/services.js";
 import { AceEditor, AceEditorWithMenu, AceEditorWithTree } from "../js/editors.js";
 import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
 
@@ -28,6 +28,30 @@ class LLMParamUIPair {
         this.elem.parentElement.classList.toggle('visually-hidden');
       }
     });
+  }
+
+  show() {
+    let isVisible = false;
+    if (this.dualParent) {
+      isVisible = !this.elem.parentElement.parentElement.classList.contains('visually-hidden');
+    } else {
+      isVisible = !this.elem.parentElement.classList.contains('visually-hidden');
+    }
+    if (!isVisible) {
+      this.btn.dispatchEvent(new Event('click'));
+    }
+  }
+
+  hide() {
+    let isVisible = false;
+    if (this.dualParent) {
+      isVisible = !this.elem.parentElement.parentElement.classList.contains('visually-hidden');
+    } else {
+      isVisible = !this.elem.parentElement.classList.contains('visually-hidden');
+    }
+    if (isVisible) {
+      this.btn.dispatchEvent(new Event('click'));
+    }
   }
 
   setValueUpdates() {
@@ -232,6 +256,9 @@ class PageGlobals {
     this.llmSelector = null;
     this.models = null;
     this.llmParamsUI = new LLMParamsUI();
+    this.chatMode = false;
+    this.chatHistory = null;
+    this.resetChatHistory();
   }
 
   destroy() {
@@ -597,6 +624,16 @@ class PageGlobals {
       console.log(err);
     }
   }
+
+  resetChatHistory() {
+    this.chatHistory = {
+      chatMsg: new ChatMessage()
+    }
+  }
+
+  updateChatHistory(user, ai) {
+    this.chatHistory.chatMsg.append(user, ai);
+  }
 }
 
 let globals = null;
@@ -789,21 +826,47 @@ async function setLayout() {
             return;
         }
 
-        globals.outputEditor.setText("");
         //document.getElementById('ModelOutput').value = "";
         UIUtils.addSpinnerToIconButton('SendToLLM');
-        new LLMService().callLLM(params)
-            .then(resp => {
+
+        if (globals.chatMode) {
+          globals.chatHistory.chatMsg.params = params;
+          globals.outputEditor.appendText("\n------------- User Message -------------\n");
+          globals.outputEditor.appendText(params.user_prompt);
+          globals.llmParamsUI.usrPromParam.setValue("");
+          new ChatService().callLLM(globals.chatHistory.chatMsg)
+          .then(resp => {
+            UIUtils.rmSpinnerFromIconButton('SendToLLM');
+            globals.outputEditor.appendText("\n-------------- AI Message --------------\n");
+            globals.outputEditor.appendText(resp);
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            //document.getElementById('ModelOutput').value = resp;
+          }).catch(err => {
+            UIUtils.rmSpinnerFromIconButton('SendToLLM');
+            globals.outputEditor.appendText("\n-------------- Error --------------\n");
+            globals.outputEditor.appendText(JSON.stringify(err));
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            //document.getElementById('ModelOutput').value = err;
+          });
+        } else {
+          globals.outputEditor.setText("");
+          new LLMService().callLLM(params)
+              .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(resp);
                 globals.outputEditor.hiddenContent = { llmParams: params, iterations: [ {model_resp: resp} ] };
                 //document.getElementById('ModelOutput').value = resp;
-            }).catch(err => {
+              }).catch(err => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
                 globals.outputEditor.setText(JSON.stringify(err));
                 globals.outputEditor.hiddenContent = { llmParams: params, iterations: [ {model_resp: err} ] };
                 //document.getElementById('ModelOutput').value = err;
-            });
+              });
+        }
+        
     });
 
     document.getElementById('SendFileToLLM').addEventListener('click', function () {
@@ -812,24 +875,53 @@ async function setLayout() {
             UIUtils.showAlert("erroralert", `Unable to send to [${params}] LLM`);
             return;
         }
-
-        params.code_snippet = globals.editor.getCode();
-
-        globals.outputEditor.setText("");
-        //document.getElementById('ModelOutput').value = "";
+        
         UIUtils.addSpinnerToIconButton('SendFileToLLM');
-        new LLMService().callLLM(params)
-            .then(resp => {
-                UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-                globals.outputEditor.setText(resp);
-                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
-                //document.getElementById('ModelOutput').value = resp;
-            }).catch(err => {
-                UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-                globals.outputEditor.setText(JSON.stringify(err));
-                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: err} ] };
-                //document.getElementById('ModelOutput').value = err;
-            });
+
+        if (globals.chatMode) {
+          let prompt = globals.editor.getCode() + "\n" + params.user_prompt;
+          params.code_snippet = null;
+          globals.chatHistory.chatMsg.params = params;
+          globals.outputEditor.appendText("\n------------ Sent Code File -------------\n");
+          globals.outputEditor.appendText("\n------------- User Message --------------\n");
+          globals.outputEditor.appendText(params.user_prompt);
+          params.user_prompt = prompt;
+          globals.llmParamsUI.usrPromParam.setValue("");
+          new ChatService().callLLM(globals.chatHistory.chatMsg)
+          .then(resp => {
+            UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+            globals.outputEditor.appendText("\n--------------- AI Message ---------------\n");
+            globals.outputEditor.appendText(resp);
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            //document.getElementById('ModelOutput').value = resp;
+          }).catch(err => {
+            UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+            globals.outputEditor.appendText("\n--------------- Error ---------------\n");
+            globals.outputEditor.appendText(JSON.stringify(err));
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            //document.getElementById('ModelOutput').value = err;
+          });
+        } else {
+          params.code_snippet = globals.editor.getCode();
+          globals.outputEditor.setText("");
+          //document.getElementById('ModelOutput').value = "";
+          
+          new LLMService().callLLM(params)
+              .then(resp => {
+                  UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+                  globals.outputEditor.setText(resp);
+                  globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
+                  //document.getElementById('ModelOutput').value = resp;
+              }).catch(err => {
+                  UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
+                  globals.outputEditor.setText(JSON.stringify(err));
+                  globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: err} ] };
+                  //document.getElementById('ModelOutput').value = err;
+              });
+        }
     });
 
     document.getElementById('SendFuncsToLLM').addEventListener('click', async function () {
@@ -901,21 +993,52 @@ async function setLayout() {
             UIUtils.showAlert("erroralert", "Nothing to send, no Code Selected in the Editor");
             return;
         }
-        globals.outputEditor.setText("");
-        //document.getElementById('ModelOutput').value = "";
+
         UIUtils.addSpinnerToIconButton('SendSelectionToLLM');
-        new LLMService().callLLM(params)
-            .then(resp => {
-                UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-                globals.outputEditor.setText(resp);
-                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
-                //document.getElementById('ModelOutput').value = resp;
-            }).catch(err => {
-                UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-                globals.outputEditor.setText(JSON.stringify(err));
-                globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: JSON.stringify(err)} ] };
-                //document.getElementById('ModelOutput').value = err;
-            });
+
+        if (globals.chatMode) {
+          let prompt = params.code_snippet + "\n" + params.user_prompt;
+          params.code_snippet = null;
+          globals.chatHistory.chatMsg.params = params;
+          globals.outputEditor.appendText("\n------------- Sent Selected Code -------------\n");
+          globals.outputEditor.appendText("\n---------------- User Message ----------------\n");
+          globals.outputEditor.appendText(params.user_prompt);
+          params.user_prompt = prompt;
+          globals.llmParamsUI.usrPromParam.setValue("");
+          new ChatService().callLLM(globals.chatHistory.chatMsg)
+          .then(resp => {
+            UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+            globals.outputEditor.appendText("\n--------------- AI Message ---------------\n");
+            globals.outputEditor.appendText(resp);
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            //document.getElementById('ModelOutput').value = resp;
+          }).catch(err => {
+            UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+            globals.outputEditor.appendText("\n--------------- Error ---------------\n");
+            globals.outputEditor.appendText(JSON.stringify(err));
+            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.hiddenContent = null;
+            //document.getElementById('ModelOutput').value = err;
+          });
+        } else {
+          globals.outputEditor.setText("");
+          //document.getElementById('ModelOutput').value = "";
+          
+          new LLMService().callLLM(params)
+              .then(resp => {
+                  UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+                  globals.outputEditor.setText(resp);
+                  globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_resp: resp} ] };
+                  //document.getElementById('ModelOutput').value = resp;
+              }).catch(err => {
+                  UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
+                  globals.outputEditor.setText(JSON.stringify(err));
+                  globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [ {model_err: JSON.stringify(err)} ] };
+                  //document.getElementById('ModelOutput').value = err;
+              });
+        }
     });
 
     $("#PromptsListModal").on('show.bs.modal', async (event) => {
@@ -961,6 +1084,20 @@ async function setLayout() {
       const dataTable = $("#ParamsHistoryTable").DataTable();
       dataTable.columns.adjust().draw();
       // dataTable.fixedHeader.adjust();  // Fixed Header won't work in Bootstrap Modal
+    });
+
+    document.getElementById('EnableChatMode').addEventListener('click', function () {
+      if (this.checked) {
+        globals.chatMode = true;
+        globals.resetChatHistory();
+        globals.llmParamsUI.usrPromParam.show();
+        document.getElementById('SendFuncsToLLM').disabled = true;
+        globals.outputEditor.setText("");
+      } else {
+        globals.chatMode = false;
+        globals.llmParamsUI.usrPromParam.hide();
+        document.getElementById('SendFuncsToLLM').disabled = false;
+      }
     });
 
     editor1setup();

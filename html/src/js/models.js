@@ -130,6 +130,54 @@ class LLMParams {
   }
 }
 
+class ChatExchange {
+  constructor(user, ai) {
+    this.user = user;
+    this.ai = ai;
+  }
+
+  toJSON() {
+    return {
+      user: this.user,
+      ai: this.ai
+    }
+  }
+
+  static fromJSON(json) {
+    return new ChatExchange(
+      json.user,
+      json.ai
+    )
+  }
+}
+
+class ChatMessage {
+  constructor(params = null, history = []) {
+    this.params = params;
+    this.history = history;
+  }
+
+  append(userMsg, aiMsg) {
+    this.history.push(new ChatExchange(userMsg, aiMsg));
+  }
+
+  toJSON() {
+    return {
+      params: this.params.toJSON(),
+      history: this.history.map(hist => hist.toJSON())
+    }
+  }
+
+  static fromJSON(json) {
+    let msg = new ChatMessage(LLMParams.fromJSON(json.params))
+    if (json.history) {
+      json.history.forEach(exchg => msg.append(exchg.user, exchg.ai));
+    }
+
+    return msg;
+  }
+}
+
 class LLMParamsSnap {
   constructor(tm=null, user="", purpose="", hash="", params=None) {
     this.tm = tm;
@@ -369,4 +417,5 @@ class GlobalData {
 }
 
 
-export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, CodeFileCache, User, GlobalData, FileTree }
+export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, 
+         CodeFileCache, User, GlobalData, FileTree, ChatExchange, ChatMessage }

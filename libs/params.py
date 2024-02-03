@@ -65,10 +65,10 @@ MODELS = {
         'provider': 'AzureChatOpenAI',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
-            'max_new_tokens': 2048,
+            'max_new_tokens': 4096,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'repetition_penalty': 1,
+            'repetition_penalty': 0.5,
             'presence_penalty': 0
         }
     },
@@ -83,10 +83,10 @@ MODELS = {
         'provider': 'AzureChatOpenAI',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
-            'max_new_tokens': 1024,
+            'max_new_tokens': 10000,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'repetition_penalty': 1,
+            'repetition_penalty': 0.5,
             'presence_penalty': 0
         }
     },
@@ -101,10 +101,10 @@ MODELS = {
         'provider': 'AzureOpenAILLM',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
-            'max_new_tokens': 1024,
+            'max_new_tokens': 10000,
             'temperature': 0.1,
             'topp_nucleus_sampling': 0.9,
-            'repetition_penalty': 1,
+            'repetition_penalty': 0.5,
             'presence_penalty': 0
         }
     },

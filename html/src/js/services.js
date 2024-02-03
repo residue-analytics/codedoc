@@ -258,6 +258,20 @@ class LLMService {
   }
 }
 
+class ChatService {
+  constructor() {
+  }
+
+  async callLLM(message) {
+    // Returns text
+
+    const response = await new FetchAPI().post('/chat/', message.toJSON());
+    //console.log(response);
+    // Gets a model_resp JSON attribute
+    return response.model_resp;
+  }
+}
+
 class LoginService {
   constructor() {
   }
@@ -292,4 +306,4 @@ class LoginService {
   }
 }
 
-export { WebError, ModelService, FilesService, LLMService, LLMParamsService, LoginService }
+export { WebError, ModelService, FilesService, LLMService, ChatService, LLMParamsService, LoginService }
