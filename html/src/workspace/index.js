@@ -67,7 +67,9 @@ class LLMParamUIPair {
 
   setValue(value) {
     this.elem.value = value;
-    this.elem.dispatchEvent(new InputEvent("input"));
+    let evt = new InputEvent("input");
+    evt.raisedFromCode = true;
+    this.elem.dispatchEvent(evt);
   }
 
   addToValue(value) {
@@ -173,10 +175,12 @@ class LLMParamsUI {
 
     let modelCode = this.modelLLMParam.getValue();
     console.log("From params [" + params.llmID + "] From selctor [" + modelCode + "]");
-    if (modelCode == "" || modelCode == "None" || modelCode == null) {
-      const model = globals.models.findByID(params.llmID);
-      this.modelLLMParam.setValue(model.code);
-    }
+    //if (modelCode == "" || modelCode == "None" || modelCode == null) {
+    //  const model = globals.models.findByID(params.llmID);
+    //  this.modelLLMParam.setValue(model.code);
+    //}
+    const model = globals.models.findByID(params.llmID);
+    this.modelLLMParam.setValue(model.code);
 
     this.updateKWArgs(params.model_kwargs);
     if (params.user_prompt == null) {
@@ -600,6 +604,8 @@ class PageGlobals {
   }
 
   async restoreLLMParamsFromSession(modelCode=null) {
+    console.log("restoreLLMParamsFromSession");
+
     let params = null;
 
     if (!modelCode) {
@@ -736,9 +742,13 @@ async function setLayout() {
         globals.showLLMParamsHistory();
     });
 
-    document.getElementById('ModelSelector').addEventListener('input', function (event) {
-        globals.restoreLLMParamsFromSession(event.target.value);
-    });
+    // Commented out as we don't want the params to change when model is changed. 
+    //   Params are loaded from history and we need independence in changing values any time without any event triggers
+    //document.getElementById('ModelSelector').addEventListener('input', function (event) {
+    //    if (!event.raisedFromCode) {
+    //      globals.restoreLLMParamsFromSession(event.target.value);
+    //    }
+    //});
 
     document.getElementById('Discard').addEventListener('click', function () {
         globals.editor.discardChanges();
