@@ -254,6 +254,10 @@ class AceEditor {
     return "";
   }
 
+  getNumLines() {
+    return this.editor.session.getLength();
+  }
+
   async editFile(filepath, editable=true, showVersion=true) {
     let file = null;
     if (this.curFile == null) {
@@ -414,7 +418,8 @@ class AceEditor {
   }
 
   foldAll() {
-    this.editor.getSession().foldAll();
+    console.log("folding all");
+    this.editor.getSession().foldAll(0, this.getNumLines(), 0);
     this.codeFolding = true;
   }
 
