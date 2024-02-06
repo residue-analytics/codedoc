@@ -176,6 +176,13 @@ class AceEditor {
 
     this.codeFolding = false;
     this.hiddenContent = null;  // Just a placeholder to cache some data, like chat completion input data
+    this.fileLocked = false;
+  }
+
+  _fileLockedChk() {
+    if (this.fileLocked) {
+      throw new Error(`Editor is locked with [${this.curFile.name}] file changes.`)
+    }
   }
 
   destroy() {
@@ -259,6 +266,8 @@ class AceEditor {
   }
 
   async editFile(filepath, editable=true, showVersion=true) {
+    this._fileLockedChk();
+
     let file = null;
     if (this.curFile == null) {
       try {
@@ -331,6 +340,10 @@ class AceEditor {
     this.editor.setReadOnly(flag);
   }
 
+  toggleReadOnly() {
+    this.setReadOnly(!this.editor.getReadOnly());
+  }
+
   setEditMode(filepath) {
     if (filepath.endsWith(".html")) {
       this.editor.session.setMode("ace/mode/html");
@@ -348,7 +361,9 @@ class AceEditor {
   }
 
   setText(content) {
+    this._fileLockedChk();
     this.editor.session.setValue(content);
+    this.useWordWrap(false);  // Setting full content resets the word wraps in ace to off
   }
 
   appendText(content) {  // content can be an String[] or String
@@ -390,6 +405,7 @@ class AceEditor {
   }
 
   setNewFile(codeFile) {
+    this._fileLockedChk();
     if (this.curFile !== null && this.curFile.content != this.getCode()) {
       UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
       return;
@@ -507,6 +523,14 @@ class AceEditor {
     }
 
     return funcDecls;
+  }
+
+  isFileLocked() {
+    return this.fileLocked;
+  }
+
+  toggleFileLocked() {
+    this.fileLocked = !this.fileLocked;
   }
 }
 
@@ -681,7 +705,9 @@ class AceEditorWithMenu extends AceEditor {
       NewFile: { title: 'Create a new file on the server', icon: 'bi-file-earmark-plus', handler: function() {console.log("NewFile")} },
       SaveFile: { title: 'Save the changed file as a new Version on server', icon: 'bi-floppy', handler: null },
       ParseFile: { title: 'Extract functions from the file', icon: 'bi-braces', handler: null },
-      ShowHidden: { title: 'Toggle between completion JSON and Model output', icon: 'bi-filetype-json', toggle: true, handler: () => this.toggleHiddenContent() }
+      ShowHidden: { title: 'Toggle between completion JSON and Model output', icon: 'bi-filetype-json', toggle: true, handler: () => this.toggleHiddenContent() },
+      fileLock: { title: 'Keep the file in this Editor', icon: 'bi-file-lock', toggle: true, handler: () => this.toggleFileLocked() },
+      readOnly: { title: 'Toggle Read Only Mode', icon: 'bi-book', toggle: true, handler: () => this.toggleReadOnly() }
     };
   
     // Create and append buttons to the group

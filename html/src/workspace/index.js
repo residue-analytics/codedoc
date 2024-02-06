@@ -295,9 +295,11 @@ class PageGlobals {
 
     this.readOnlyEditor.setupSelectListener((name, type) => {
       if (type == AceEditorWithTree.FILE) {
-        this.editor.editFile(name).catch(err => {  // Load an editable version in the editable editor
-          UIUtils.showAlert("erroralert", err);
-        });
+        if (!globals.editor.isFileLocked()) {
+          this.editor.editFile(name).catch(err => {  // Load an editable version in the editable editor
+            UIUtils.showAlert("erroralert", err);
+          });
+        }
       }
       console.log(`Clicked on [${name}] of type [${type}]`);
     });
@@ -751,7 +753,11 @@ async function setLayout() {
     //});
 
     document.getElementById('Discard').addEventListener('click', function () {
-        globals.editor.discardChanges();
+      if (globals.editor.isFileLocked()) {
+        UIUtils.showAlert('erroralert', "Cannot reload file as File locked in Editor");
+        return;
+      }
+      globals.editor.discardChanges();
     });
 
     document.getElementById('Beautify').addEventListener('click', function () {
@@ -783,6 +789,11 @@ async function setLayout() {
     });
 
     document.getElementById('NewFile').addEventListener('click', function (e) {
+      if (globals.editor.isFileLocked()) {
+        UIUtils.showAlert('erroralert', "Cannot create new file as File locked in Editor");
+        return;
+      }
+
       const filenameModal = new bootstrap.Modal("#NewFilenameModal");
       filenameModal.show();
     });
@@ -827,6 +838,14 @@ async function setLayout() {
         //console.log(code_snippet);
       }
       //console.log(funcs);
+    });
+
+    document.getElementById('LockFile').addEventListener('click', function () {
+      globals.editor.toggleFileLocked();
+    });
+
+    document.getElementById('ReadOnly').addEventListener('click', function () {
+      globals.editor.toggleReadOnly();
     });
 
     document.getElementById('SendToLLM').addEventListener('click', function () {
