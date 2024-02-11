@@ -73,7 +73,9 @@ class LLMParamUIPair {
   }
 
   addToValue(value) {
-    this.elem.value += value;
+    if (value != null && value != undefined) {
+      this.elem.value += value;
+    }
   }
 
   disable() {
@@ -247,7 +249,9 @@ class LLMParamsUI {
   }
 
   addToContextParam(text) {
-    this.ctxParam.enabled() ? this.ctxParam.addToValue(text) : null;
+    if (text && text.length) {
+      this.ctxParam.enabled() ? this.ctxParam.addToValue(text + "\n") : null;
+    }
   }
 }
 
@@ -262,6 +266,7 @@ class PageGlobals {
     this.llmParamsUI = new LLMParamsUI();
     this.chatMode = false;
     this.chatHistory = null;
+    this.lastSentParams = null;
     this.resetChatHistory();
   }
 
@@ -329,7 +334,8 @@ class PageGlobals {
         Beautify: true,
         WordWrap: true,
         ToggleFolding: true,
-        ShowHidden: true
+        ShowHidden: true,
+        empty: true
       }
     });
     this.outputEditor.useWordWrap(true);
@@ -637,10 +643,16 @@ class PageGlobals {
     this.chatHistory = {
       chatMsg: new ChatMessage()
     }
+    document.getElementById('ResetChat').textContent = this.chatHistory.chatMsg.count();
   }
 
   updateChatHistory(user, ai) {
     this.chatHistory.chatMsg.append(user, ai);
+    document.getElementById('ResetChat').textContent = this.chatHistory.chatMsg.count();
+  }
+
+  saveLastSentParams(params) {
+    globals.lastSentParams = LLMParams.fromJSON(params.toJSON());
   }
 }
 
@@ -676,6 +688,35 @@ var substringMatcher= function(strs) {
   };
 };
 
+function formatChatOutputMessage(code="", usr_prmpt="", ai_resp="", error="") {
+  let message = "";
+
+  if (false && code && code.length) {
+    message += "\n------------- Sent Code -------------\n";
+    message += code;
+    message += "\n";
+  }
+
+  if (usr_prmpt && usr_prmpt.length) {
+    message += "\n------------- User Message -------------\n";
+    message += usr_prmpt;
+    message += "\n";
+  }
+
+  if (ai_resp && ai_resp.length) {
+    message += "\n------------- AI Message -------------\n";
+    message += ai_resp;
+    message += "\n\n";
+  }
+
+  if (error && error.length) {
+    message += "\n-------------- Error --------------\n";
+    message += error;
+    message += "\n\n";
+  }
+
+  return message;
+}
 
 async function setLayout() {
   globals = new PageGlobals();
@@ -700,6 +741,11 @@ async function setLayout() {
       document.getElementById('ContextInput').value = '';
     });
 
+    document.getElementById('UsrPromptInputClear').addEventListener('click', function (e) {
+      e.preventDefault();
+      document.getElementById('UsrPromptInput').value = '';
+    });
+
     document.getElementById('SaveParams').addEventListener('click', function (e) {
       const purpModal = new bootstrap.Modal("#ParamsPurposeModal");
       purpModal.show();
@@ -710,6 +756,14 @@ async function setLayout() {
         globals.llmParamsUI.lockParams(false);
       } else {
         globals.llmParamsUI.lockParams(true);
+      }
+    });
+
+    document.getElementById("ReloadParams").addEventListener('click', function(e) {
+      if (globals.lastSentParams) {
+        globals.llmParamsUI.updateLLMParams(globals.lastSentParams);
+      } else {
+        UIUtils.showAlert("erroralert", "No Params in History to Load");
       }
     });
 
@@ -787,6 +841,15 @@ async function setLayout() {
     document.getElementById('SelectionToCtx').addEventListener('click', function (event) {
       globals.llmParamsUI.addToContextParam(globals.editor.getSelectedCode());
     });
+    
+    document.getElementById('ReloadCtx').addEventListener('click', function (event) {
+      if (globals.lastSentParams) {
+        document.getElementById('ContextInput').value = '';
+        globals.llmParamsUI.addToContextParam(globals.lastSentParams.context);
+      } else {
+        UIUtils.showAlert('erroralert', "No Params in History to realod");
+      }
+    });
 
     document.getElementById('NewFile').addEventListener('click', function (e) {
       if (globals.editor.isFileLocked()) {
@@ -859,29 +922,30 @@ async function setLayout() {
         UIUtils.addSpinnerToIconButton('SendToLLM');
 
         if (globals.chatMode) {
+          // Save the first chat message as last sent params
+          if (globals.chatHistory.chatMsg.count() == 0) {
+            globals.saveLastSentParams(params);
+          }
+
           globals.chatHistory.chatMsg.params = params;
-          globals.outputEditor.appendText("\n------------- User Message -------------\n");
-          globals.outputEditor.appendText(params.user_prompt);
+          globals.outputEditor.appendText(formatChatOutputMessage(null, params.user_prompt, null, null));
           globals.llmParamsUI.usrPromParam.setValue("");
           new ChatService().callLLM(globals.chatHistory.chatMsg)
           .then(resp => {
             UIUtils.rmSpinnerFromIconButton('SendToLLM');
-            globals.outputEditor.appendText("\n-------------- AI Message --------------\n");
-            globals.outputEditor.appendText(resp);
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, resp, null));
             globals.outputEditor.hiddenContent = null;
-            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            globals.updateChatHistory(params.user_prompt, resp);
             //document.getElementById('ModelOutput').value = resp;
           }).catch(err => {
             UIUtils.rmSpinnerFromIconButton('SendToLLM');
-            globals.outputEditor.appendText("\n-------------- Error --------------\n");
-            globals.outputEditor.appendText(JSON.stringify(err));
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, null, JSON.stringify(err)));
             globals.outputEditor.hiddenContent = null;
             //document.getElementById('ModelOutput').value = err;
           });
         } else {
           globals.outputEditor.setText("");
+          globals.saveLastSentParams(params);
           new LLMService().callLLM(params)
               .then(resp => {
                 UIUtils.rmSpinnerFromIconButton('SendToLLM');
@@ -908,28 +972,30 @@ async function setLayout() {
         UIUtils.addSpinnerToIconButton('SendFileToLLM');
 
         if (globals.chatMode) {
+          // Save the first chat message as last sent params
+          if (globals.chatHistory.chatMsg.count() == 0) {
+            globals.saveLastSentParams(params);
+          }
+
           let prompt = globals.editor.getCode() + "\n" + params.user_prompt;
           params.code_snippet = null;
+
           globals.chatHistory.chatMsg.params = params;
           globals.outputEditor.appendText("\n------------ Sent Code File -------------\n");
-          globals.outputEditor.appendText("\n------------- User Message --------------\n");
-          globals.outputEditor.appendText(params.user_prompt);
+
+          globals.outputEditor.appendText(formatChatOutputMessage(null, params.user_prompt, null, null));
           params.user_prompt = prompt;
           globals.llmParamsUI.usrPromParam.setValue("");
           new ChatService().callLLM(globals.chatHistory.chatMsg)
           .then(resp => {
             UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-            globals.outputEditor.appendText("\n--------------- AI Message ---------------\n");
-            globals.outputEditor.appendText(resp);
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, resp, null));
             globals.outputEditor.hiddenContent = null;
-            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            globals.updateChatHistory(params.user_prompt, resp);
             //document.getElementById('ModelOutput').value = resp;
           }).catch(err => {
             UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
-            globals.outputEditor.appendText("\n--------------- Error ---------------\n");
-            globals.outputEditor.appendText(JSON.stringify(err));
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, null, JSON.stringify(err)));
             globals.outputEditor.hiddenContent = null;
             //document.getElementById('ModelOutput').value = err;
           });
@@ -937,7 +1003,8 @@ async function setLayout() {
           params.code_snippet = globals.editor.getCode();
           globals.outputEditor.setText("");
           //document.getElementById('ModelOutput').value = "";
-          
+          globals.saveLastSentParams(params);
+
           new LLMService().callLLM(params)
               .then(resp => {
                   UIUtils.rmSpinnerFromIconButton('SendFileToLLM');
@@ -960,6 +1027,11 @@ async function setLayout() {
           return;
       }
 
+      if (globals.chatMode) {
+        UIUtils.showAlert("erroralert", `Cannot use this in Chat Mode`);
+        return;
+      }
+
       globals.outputEditor.setText("");
 
       const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
@@ -967,6 +1039,8 @@ async function setLayout() {
         UIUtils.showAlert("erroralert", "No functions found in the code");
       } else {
         UIUtils.addSpinnerToIconButton('SendFuncsToLLM');
+        globals.saveLastSentParams(params);
+
         let all_resps = [];
         globals.outputEditor.hiddenContent = { llmParams: params, filename: globals.editor.getFilename(), iterations: [] };
         // iterations - [{funcname: .., code: .., model_resp: ..}]
@@ -1026,35 +1100,37 @@ async function setLayout() {
         UIUtils.addSpinnerToIconButton('SendSelectionToLLM');
 
         if (globals.chatMode) {
+          // Save the first chat message as last sent params
+          if (globals.chatHistory.chatMsg.count() == 0) {
+            globals.saveLastSentParams(params);
+          }
+
           let prompt = params.code_snippet + "\n" + params.user_prompt;
           params.code_snippet = null;
+
           globals.chatHistory.chatMsg.params = params;
           globals.outputEditor.appendText("\n------------- Sent Selected Code -------------\n");
-          globals.outputEditor.appendText("\n---------------- User Message ----------------\n");
-          globals.outputEditor.appendText(params.user_prompt);
+          globals.outputEditor.appendText(formatChatOutputMessage(null, params.user_prompt, null, null));
           params.user_prompt = prompt;
           globals.llmParamsUI.usrPromParam.setValue("");
           new ChatService().callLLM(globals.chatHistory.chatMsg)
           .then(resp => {
             UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-            globals.outputEditor.appendText("\n--------------- AI Message ---------------\n");
-            globals.outputEditor.appendText(resp);
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, resp, null));
             globals.outputEditor.hiddenContent = null;
-            globals.chatHistory.chatMsg.append(params.user_prompt, resp);
+            globals.updateChatHistory(params.user_prompt, resp);
             //document.getElementById('ModelOutput').value = resp;
           }).catch(err => {
             UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
-            globals.outputEditor.appendText("\n--------------- Error ---------------\n");
-            globals.outputEditor.appendText(JSON.stringify(err));
-            globals.outputEditor.appendText("\n\n");
+            globals.outputEditor.appendText(formatChatOutputMessage(null, null, null, JSON.stringify(err)));
             globals.outputEditor.hiddenContent = null;
             //document.getElementById('ModelOutput').value = err;
           });
         } else {
           globals.outputEditor.setText("");
           //document.getElementById('ModelOutput').value = "";
-          
+          globals.saveLastSentParams(params);
+
           new LLMService().callLLM(params)
               .then(resp => {
                   UIUtils.rmSpinnerFromIconButton('SendSelectionToLLM');
@@ -1118,15 +1194,26 @@ async function setLayout() {
     document.getElementById('EnableChatMode').addEventListener('click', function () {
       if (this.checked) {
         globals.chatMode = true;
-        globals.resetChatHistory();
         globals.llmParamsUI.usrPromParam.show();
         document.getElementById('SendFuncsToLLM').disabled = true;
-        globals.outputEditor.setText("");
+        if (globals.chatHistory.chatMsg.count()) {
+          alert("Old Chat History still persists!! You may want to reset it before sending a new chat message.");
+        }
+
+        let aiMsg = globals.outputEditor.getCode();
+        if (aiMsg && aiMsg.length && globals.lastSentParams) {
+          globals.outputEditor.setText(formatChatOutputMessage(null, globals.lastSentParams.user_prompt, aiMsg, null));
+          globals.updateChatHistory(globals.lastSentParams.user_prompt, aiMsg);
+        }
       } else {
         globals.chatMode = false;
-        globals.llmParamsUI.usrPromParam.hide();
         document.getElementById('SendFuncsToLLM').disabled = false;
       }
+    });
+
+    document.getElementById('ResetChat').addEventListener('click', function () {
+      globals.resetChatHistory();
+      globals.outputEditor.setText("");
     });
 
     editor1setup();

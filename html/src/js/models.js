@@ -157,6 +157,10 @@ class ChatMessage {
     this.history = history;
   }
 
+  count() {
+    return this.history.length;
+  }
+
   append(userMsg, aiMsg) {
     this.history.push(new ChatExchange(userMsg, aiMsg));
   }

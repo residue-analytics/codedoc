@@ -145,6 +145,10 @@
           <button id="LockParams" title="Lock Params" type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="button">
             <span class="bi bi-lock"></span>
           </button>
+          <button id="ReloadParams" title="Reload Params - In Chat Mode (First Message in this session) / In Non-chat Mode (Last Sent Message)" 
+            type="button" class="btn btn-outline-secondary btn-sm">
+            <span class="bi bi-arrow-clockwise"></span>
+          </button>
           <button id="ShowParamsHistory" title="Show Params' History" type="button" class="btn btn-outline-secondary btn-sm">
             <span class="bi bi-list"></span>
           </button>
@@ -160,15 +164,24 @@
               title="Add Selected Text to Context"> 
               <span class="bi bi-journal-text"></span>
             </button>
+            <button id="ReloadCtx" type="button" class="btn btn-primary btn-sm"
+              title="Reload Context - In Chat Mode (First Message in this session) / In Non-chat Mode (Last Sent Message)">
+              <span class="bi bi-arrow-clockwise"></span>
+            </button>
           </div>
         </div>
 
         <div class="mb-3">
-          <div class="form-check">
-            <input class="form-check-input" type="checkbox" value="" id="EnableChatMode">
-            <label class="form-check-label" for="EnableChatMode">
-              Chat Mode
+          <div class="btn-group" role="group" aria-label="Second group">
+            <input type="checkbox" class="btn-check" id="EnableChatMode" autocomplete="off">
+            <label class="btn btn-primary btn-sm" for="EnableChatMode" title="Enable/Disable Chat Mode">
+              <span class="bi bi-chat-left-text"></span>
             </label>
+
+            <button id="ResetChat" type="button" class="btn btn-primary btn-sm"
+              title="# of Messages in Chat History, Click to Reset">
+              0
+            </button>
           </div>
         </div>
 
@@ -237,7 +250,8 @@
           <div class="mb-3 visually-hidden">
             <label for="UsrPromptInput" class="form-label">User Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
-                data-bs-prompt="User" title="Lists all User Prompts created by you"></a>
+                data-bs-prompt="User" title="List all your User Prompts"></a>
+                <a id="UsrPromptInputClear" href="#" class="bi bi-x" title="Clear User Prompt"></a>
             </label>
             <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
             <div class="form-text">

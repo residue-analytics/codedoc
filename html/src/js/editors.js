@@ -363,7 +363,6 @@ class AceEditor {
   setText(content) {
     this._fileLockedChk();
     this.editor.session.setValue(content);
-    this.useWordWrap(false);  // Setting full content resets the word wraps in ace to off
   }
 
   appendText(content) {  // content can be an String[] or String
@@ -707,7 +706,8 @@ class AceEditorWithMenu extends AceEditor {
       ParseFile: { title: 'Extract functions from the file', icon: 'bi-braces', handler: null },
       ShowHidden: { title: 'Toggle between completion JSON and Model output', icon: 'bi-filetype-json', toggle: true, handler: () => this.toggleHiddenContent() },
       fileLock: { title: 'Keep the file in this Editor', icon: 'bi-file-lock', toggle: true, handler: () => this.toggleFileLocked() },
-      readOnly: { title: 'Toggle Read Only Mode', icon: 'bi-book', toggle: true, handler: () => this.toggleReadOnly() }
+      readOnly: { title: 'Toggle Read Only Mode', icon: 'bi-book', toggle: true, handler: () => this.toggleReadOnly() },
+      empty: { title: 'Truncate Content / File', icon: 'bi-x', handler: () => this.setText("") }
     };
   
     // Create and append buttons to the group
