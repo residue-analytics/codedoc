@@ -1,10 +1,13 @@
 import { AceEditor } from "../../js/editors.js";
 import { AppGlobals, UIUtils } from "../../js/utils.js";
+import { FetchAPI } from "../../js/services.js";
+import plantumlEncoder from 'https://cdn.jsdelivr.net/npm/plantuml-encoder@1.4.0/+esm'
 
 class PageGlobals {
   constructor() {
     this.inputEditor = null;
     this.jsonEditor = null;
+    this.pumlEditor = null;
   }
 
   destroy() {
@@ -13,14 +16,19 @@ class PageGlobals {
 
     this.jsonEditor.destroy();
     this.jsonEditor = null;
+
+    this.pumlEditor.destroy();
+    this.pumlEditor = null;
   }
 
-  async setEditors(inputID, jsonID) {
+  async setEditors(inputID, jsonID, pumlID) {
     this.inputEditor = new AceEditor(inputID);
     this.inputEditor.setEditMode(".txt");
     this.jsonEditor = new AceEditor(jsonID);
     this.jsonEditor.setEditMode(".json");
     this.jsonEditor.useWordWrap();
+
+    this.pumlEditor = new AceEditor(pumlID);
   }
 }
 
@@ -61,7 +69,8 @@ function setLayout() {
 
   AppGlobals.instance.pageDestroy = resdestroy;
 
-  globals.setEditors("inputEditor", "jsonEditor");
+  globals.setEditors("inputEditor", "jsonEditor", "pumlEditor");
+
   document.getElementById("convertToJSON").addEventListener("click", () => {
     try {
       const json = csvJSON(globals.inputEditor.getCode(), '"', ',');
@@ -71,6 +80,16 @@ function setLayout() {
     } catch (exp) {
       console.log(exp);
       UIUtils.showAlert("erroralert", exp);
+    }
+  });
+
+  document.getElementById("generateDiagram").addEventListener("click", async () => {
+    try {
+      let encoded = plantumlEncoder.encode(globals.pumlEditor.getCode());
+      let image = await new FetchAPI().getImage("/plantuml/img/" + encoded);
+    } catch (exp) {
+      console.log(exp);
+      UIUtils.showAlert("erroralert", exp)
     }
   });
 }

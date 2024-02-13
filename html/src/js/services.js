@@ -28,6 +28,14 @@ class FetchAPI {
     return await response.json();
   }
 
+  async getImage(uri, params = {}) {
+    const urlObj = new URL(uri, window.location.origin);
+    Object.keys(params).forEach(key => urlObj.searchParams.append(key, params[key]));
+    const response = await fetch(urlObj.toString());
+    await this.handleResponse(response);
+    return response.blob();
+  }
+
   async post(url, data) {
     const response = await fetch(url, {
       method: 'POST',
@@ -306,4 +314,4 @@ class LoginService {
   }
 }
 
-export { WebError, ModelService, FilesService, LLMService, ChatService, LLMParamsService, LoginService }
+export { WebError, FetchAPI, ModelService, FilesService, LLMService, ChatService, LLMParamsService, LoginService }
