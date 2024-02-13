@@ -90,7 +90,7 @@ function setLayout() {
 
       const container = document.getElementById("pumlImage");
       while (container.firstChild) {
-        myNode.removeChild(myNode.lastChild);
+        container.removeChild(container.lastChild);
       }
 
       const imageUrl = URL.createObjectURL(image);
