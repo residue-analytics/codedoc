@@ -86,12 +86,17 @@ function setLayout() {
   document.getElementById("generateDiagram").addEventListener("click", async () => {
     try {
       let encoded = plantumlEncoder.encode(globals.pumlEditor.getCode());
-      let image = await new FetchAPI().getImage("/plantuml/img/" + encoded);
+      let image = await new FetchAPI().getImage("/plantuml/svg/" + encoded);
+
+      const container = document.getElementById("pumlImage");
+      while (container.firstChild) {
+        myNode.removeChild(myNode.lastChild);
+      }
 
       const imageUrl = URL.createObjectURL(image);
       const imageElement = document.createElement("img");
       imageElement.src = imageUrl;
-      const container = document.getElementById("pumlImage");
+      
       container.appendChild(imageElement);
     } catch (exp) {
       console.log(exp);
