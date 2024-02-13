@@ -2,6 +2,7 @@ import { AceEditor } from "../../js/editors.js";
 import { AppGlobals, UIUtils } from "../../js/utils.js";
 import { FetchAPI } from "../../js/services.js";
 import plantumlEncoder from 'https://cdn.jsdelivr.net/npm/plantuml-encoder@1.4.0/+esm'
+import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs'
 
 class PageGlobals {
   constructor() {
@@ -70,6 +71,7 @@ function setLayout() {
   AppGlobals.instance.pageDestroy = resdestroy;
 
   globals.setEditors("inputEditor", "jsonEditor", "pumlEditor");
+  mermaid.initialize({ startOnLoad: false });
 
   document.getElementById("convertToJSON").addEventListener("click", () => {
     try {
@@ -83,21 +85,30 @@ function setLayout() {
     }
   });
 
-  document.getElementById("generateDiagram").addEventListener("click", async () => {
+  document.getElementById("generateDiagram").addEventListener("click", async (event) => {
+    event.preventDefault();
     try {
-      let encoded = plantumlEncoder.encode(globals.pumlEditor.getCode());
-      let image = await new FetchAPI().getImage("/plantuml/svg/" + encoded);
-
+      const code = globals.pumlEditor.getCode().trimStart();
       const container = document.getElementById("pumlImage");
       while (container.firstChild) {
         container.removeChild(container.lastChild);
       }
 
-      const imageUrl = URL.createObjectURL(image);
-      const imageElement = document.createElement("img");
-      imageElement.src = imageUrl;
-      
-      container.appendChild(imageElement);
+      if (code.startsWith("@start")) {
+        // Plant UML Diagram
+        let image = await new FetchAPI().getImage("/plantuml/svg/" + plantumlEncoder.encode(code));
+        const imageElement = document.createElement("img");
+        imageElement.src = URL.createObjectURL(image);
+        
+        container.appendChild(imageElement);
+      } else {
+        // Mermaid JS Diagram
+        if (await mermaid.parse(code)) {
+          const { svg } = await mermaid.render('mermaidImage', code);
+          console.log(svg);
+          container.innerHTML = svg;
+        }
+      }
     } catch (exp) {
       console.log(exp);
       UIUtils.showAlert("erroralert", exp)
