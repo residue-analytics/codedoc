@@ -95,8 +95,12 @@ function setLayout() {
       }
 
       if (code.startsWith("@start")) {
+        let img = "svg";
+        if (document.getElementById("pngForPUML").checked) {
+          img = "png";
+        }
         // Plant UML Diagram
-        let image = await new FetchAPI().getImage("/plantuml/svg/" + plantumlEncoder.encode(code));
+        let image = await new FetchAPI().getImage(`/plantuml/${img}/` + plantumlEncoder.encode(code));
         const imageElement = document.createElement("img");
         imageElement.src = URL.createObjectURL(image);
         
