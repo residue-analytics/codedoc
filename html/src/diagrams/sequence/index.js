@@ -105,8 +105,13 @@ function setLayout() {
         // Mermaid JS Diagram
         if (await mermaid.parse(code)) {
           const { svg } = await mermaid.render('mermaidImage', code);
-          console.log(svg);
-          container.innerHTML = svg;
+          const blob = new Blob([svg], { type: "image/svg+xml" });
+
+          const imageElement = document.createElement("img");
+          // create an URI pointing to that blob
+          imageElement.src = URL.createObjectURL(blob);
+
+          container.appendChild(imageElement);
         }
       }
     } catch (exp) {
