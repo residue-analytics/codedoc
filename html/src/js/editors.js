@@ -353,10 +353,14 @@ class AceEditor {
       this.editor.session.setMode("ace/mode/css");
     } else if (filepath.endsWith(".json")) {
       this.editor.session.setMode("ace/mode/json");
-    } else if (filepath.endsWith(".txt")) {
-      this.editor.session.setMode("");
+    } else if (filepath.endsWith(".ejs")) {
+      this.editor.session.setMode("ace/mode/html");
     } else if (filepath.endsWith(".py")) {
       this.editor.session.setMode("ace/mode/python");
+    } else if (filepath.endsWith(".md")) {
+      this.editor.session.setMode("ace/mode/yaml");
+    } else {
+      this.editor.session.setMode("");
     }
   }
 
@@ -783,4 +787,67 @@ class AceEditorWithMenu extends AceEditor {
   }
 }
 
-export { VanillaEditor, AceEditor, AceEditorWithTree, AceEditorWithMenu }
+class AceEditorWithMenuTree extends AceEditorWithMenu {
+
+  static FILE = Tree.FILE;
+  static FOLDER = Tree.FOLDER;
+
+  constructor(treeID, editorID, parent=null, editableFiles=true, menuOptions={}) {
+    super(editorID, parent, menuOptions);
+
+    this.treeID = treeID;
+    this.editableFiles = editableFiles;
+
+    this.tree = new TreeView(this.treeID);
+    this.setReadOnly(!this.editableFiles);
+    this.treeCallback = null;
+    this.filelist = null;
+  }
+
+  destroy() {  // TODO: Remove the Event Listeners on the parent
+    if (this.tree) {
+      this.tree.destroy();
+      this.tree = null;
+      super.destroy();
+    }
+  }
+
+  initialize(fileList, selectActionCB=null) {
+    if (!selectActionCB) {
+      selectActionCB = (filepath, type) => {
+        if (type == AceEditorWithMenuTree.FILE) {
+          //console.log("Editable [" + this.editableFiles + "] File set from TreeEditor [" + filepath + "]");
+          this.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
+        }
+      };
+    }
+
+    this.tree.initialize(fileList, selectActionCB);
+  }
+
+  removeCurActive() {
+    this.tree.removeCurActive();
+  }
+
+  reloadTree(fileList) {  // TODO: Remove the Event Listeners on the parent
+    if (this.tree) {
+      this.tree.destroy();
+      this.tree = null;
+    }
+
+    this.tree = new TreeView(this.treeID);
+    this.initialize(fileList);
+    this.setupSelectListener(this.treeCallback);
+  }
+
+  setupSelectListener(callback) {
+    this.treeCallback = callback;
+    this.tree.setupSelectListener(callback);
+  }
+
+  showFile(filepath) {
+    this.tree.browseToFile(filepath);
+  }
+}
+
+export { VanillaEditor, AceEditor, AceEditorWithTree, AceEditorWithMenu, AceEditorWithMenuTree }

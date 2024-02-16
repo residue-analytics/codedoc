@@ -11,11 +11,10 @@
   <div class="row justify-content-center mb-3">
     <a id="convertToJSON" class="btn btn-primary col-3" href="#" role="button">Convert</a>
   </div>
-  <div class="row mb-3" style="min-height:400px">
-    <div id="pumlEditor" class="col">
-      Write your Plant UML diagram script (@startuml) or mermaidJS markdown here and click "Generate Diagram"
+  <div class="row justify-content-center app-editor">
+    <div id="pumlTree" class="col-4 border dirtree" style="height: 404px;">
     </div>
-    <div id="pumlImage" class="col d-flex justify-content-center">
+    <div id="pumlEditor" class="col p-0 mb-3" style="height: 404px;">
     </div>
   </div>
   <div class="row align-items-center justify-content-center mb-3">
@@ -29,8 +28,28 @@
       <a id="generateDiagram" class="btn btn-primary" href="#" role="button">Generate Diagram</a>
     </div>
   </div>
+  <div class="row mb-3" style="min-height: 500px">
+    <div id="pumlImage" class="col d-flex justify-content-center">
+    </div>
+  </div>
 </div>
 
+<div id="NewFilenameModal" tabindex="-1" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Full Path & Name of the New File?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea class="form-control" id="NewFilenameModalText" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
 <!--build:js(src) diagrams/sequence/index.js type="module"-->
 <script src="diagrams/sequence/index.js" type="module"></script>
 <!-- endbuild -->
