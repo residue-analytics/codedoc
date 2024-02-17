@@ -440,7 +440,7 @@ class PageGlobals {
         destroy: true,
         data: history.records,   // Array of JSON flat objects, not LLMParams Model objects
         scrollX: true,
-        scrollY: 450,
+        scrollY: '50vh',
         scrollCollapse: true,
         paging: false,
         //fixedHeader: {          // Fixed Header won't work in Bootstrap Modal
@@ -476,7 +476,8 @@ class PageGlobals {
           { targets: 4, render: function (data, type, row, meta) { 
               //console.log(data + " " + type + " " + row.params.llmID);
               if (type === 'display') {
-                return '<p style="white-space: pre-line;">' + data + '</p>';
+                let instaText = (data != null && data.length > 50) ? data.substr(0, 50) + "..." : data == null?"":data;
+                return '<p style="white-space: pre-line;" title="' + data + '">' + instaText + '</p>';
               }
               return data;
             }
@@ -484,7 +485,8 @@ class PageGlobals {
           { targets: 5, render: function (data, type, row, meta) { 
               //console.log(data + " " + type + " " + row.params.llmID);
               if (type === 'display') {
-                return '<p style="white-space: pre-line;">' + data + '</p>';
+                let instaText = (data != null && data.length > 50) ? data.substr(0, 50) + "..." : data == null?"":data;
+                return '<p style="white-space: pre-line;" title="' + data + '">' + instaText + '</p>';
               }
               return data;
             }
@@ -1202,7 +1204,7 @@ async function setLayout() {
 
         let aiMsg = globals.outputEditor.getCode();
         if (aiMsg && aiMsg.length && globals.lastSentParams) {
-          globals.outputEditor.setText(formatChatOutputMessage(null, globals.lastSentParams.user_prompt, aiMsg, null));
+          globals.outputEditor.setText(formatChatOutputMessage(globals.lastSentParams.code_snippet, globals.lastSentParams.user_prompt, aiMsg, null));
           globals.updateChatHistory(globals.lastSentParams.user_prompt, aiMsg);
         }
       } else {

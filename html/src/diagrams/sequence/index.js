@@ -47,11 +47,12 @@ class PageGlobals {
         SaveFile: { title: "Save the changed file as a new Version on server", icon: "bi bi-floppy", handler: () => {
           try {
             UIUtils.addSpinnerToIconButton('SaveFile');
-            new FilesService().saveFile(globals.diagEditor.getCurFile())
+            new FilesService().saveFile(this.diagEditor.getCurFile())
               .then((codeFile) => {
                 UIUtils.rmSpinnerFromIconButton('SaveFile');
-                codeFile.content = globals.diagEditor.getCode();
-                globals.diagEditor.curFileSavedSuccessfully(codeFile);
+                codeFile.content = this.diagEditor.getCode();
+                this.diagEditor.curFileSavedSuccessfully(codeFile);
+                this.loadDiagramEditor(true);
                 UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}] and commit [${codeFile.commit}]`);
               })
               .catch((err) => {

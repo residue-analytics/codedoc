@@ -293,7 +293,7 @@ class AceEditor {
       this.editor.session.selection.on('changeSelection', function (e) { });
     } else {
       // save session and then create new session for new file?
-      console.log(`Currently editing [${this.curFile.name}]`);
+      //console.log(`Currently editing [${this.curFile.name}]`);
       // We already have code of the current file in cache. Check if there were any modifications done.
       if (this.curFile.content != this.getCode()) {
         UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
@@ -610,6 +610,23 @@ class TreeView {
       }
     }
   }
+
+  isTreeCollapsed() {
+    return document.getElementById(this.treeID).classList.contains('treeCollapsed');
+  }
+
+  toggleTreeCollapse() {
+    /**  Following CSS classes are attached on the tree node for collapsing to work
+     *  .dirtree { overflow: auto; transition: width 0.3s ease-in; }
+        .treeCollapsed { width: 0%; overflow: hidden; }
+     */
+    let treeElem = document.getElementById(this.treeID);
+    if (treeElem.classList.contains('treeCollapsed')) {
+      treeElem.classList.remove('treeCollapsed');
+    } else {
+      treeElem.classList.add('treeCollapsed');
+    }
+  }
 }
 
 class AceEditorWithTree extends AceEditor {
@@ -699,6 +716,8 @@ class AceEditorWithMenu extends AceEditor {
 
     // Button definitions
     const buttonDefs = {
+      ToggleTree: { title: "Show/Hide Directory Tree", icon: 'bi bi-arrow-left-right', handler: function() {console.log("TreeToggling!!")} },
+      SwitchTree: { title: "Switch Read/Write Directory Trees", icon: 'bi bi-signpost-split', handler: function() {console.log("Switching Tree")} },
       UndoFile: { title: 'Undo the last change', icon: 'bi-arrow-counterclockwise', handler: () => this.undo() },
       RedoFile: { title: 'Redo the last Undo', icon: 'bi-arrow-clockwise', handler: () => this.redo() },
       Beautify: { title: 'Beautify / Format the code', icon: 'bi-text-indent-left' , handler: () => this.beautify()},
