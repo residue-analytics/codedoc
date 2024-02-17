@@ -433,14 +433,16 @@ class PageGlobals {
       
       const histModal = new bootstrap.Modal("#ParamsHistoryModal");
       histModal.show();
-
+      const escapeHtml = (unsafe) => {
+        return unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+    }
       const dataTable = $("#ParamsHistoryTable").DataTable({
         //dom: 'Bfrtip',
         dom: 'B' + "<'row'<'col-md-6'i><'col-md-6'f>>" + 'tr' + "<'row'<'col-md-5'l><'col-md-7'p>>",
         destroy: true,
         data: history.records,   // Array of JSON flat objects, not LLMParams Model objects
         scrollX: true,
-        scrollY: '50vh',
+        scrollY: '65vh',
         scrollCollapse: true,
         paging: false,
         //fixedHeader: {          // Fixed Header won't work in Bootstrap Modal
@@ -456,9 +458,9 @@ class PageGlobals {
           { data: "tm", title: 'Timestamp' },
           { data: "user", title: 'User Name' },
           { data: "params.llmID", title: 'LLM ID' },
-          { data: "purpose", title: 'Purpose' },
-          { data: "params.system_prompt", title: 'System Prompt' },
-          { data: "params.user_prompt", title: 'User Prompt' },
+          { data: "purpose", title: 'Purpose', width: '15%' },
+          { data: "params.system_prompt", title: 'System Prompt', width: '15%' },
+          { data: "params.user_prompt", title: 'User Prompt', width: '20%' },
           { data: "params.temperature", title: 'T' },
           { data: "params.topp_nucleus_sampling", title: 'Top P' },
           { data: "params.repetition_penalty", title: 'Rep Pen' },
@@ -477,7 +479,7 @@ class PageGlobals {
               //console.log(data + " " + type + " " + row.params.llmID);
               if (type === 'display') {
                 let instaText = (data != null && data.length > 50) ? data.substr(0, 50) + "..." : data == null?"":data;
-                return '<p style="white-space: pre-line;" title="' + data + '">' + instaText + '</p>';
+                return '<p style="white-space: pre-line;" title="' + escapeHtml(data) + '">' + instaText + '</p>';
               }
               return data;
             }
@@ -485,8 +487,8 @@ class PageGlobals {
           { targets: 5, render: function (data, type, row, meta) { 
               //console.log(data + " " + type + " " + row.params.llmID);
               if (type === 'display') {
-                let instaText = (data != null && data.length > 50) ? data.substr(0, 50) + "..." : data == null?"":data;
-                return '<p style="white-space: pre-line;" title="' + data + '">' + instaText + '</p>';
+                let instaText = (data != null && data.length > 70) ? data.substr(0, 70) + "..." : data == null?"":data;
+                return '<p style="white-space: pre-line;" title="' + escapeHtml(data) + '">' + instaText + '</p>';
               }
               return data;
             }
