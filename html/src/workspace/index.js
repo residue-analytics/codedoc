@@ -695,7 +695,7 @@ var substringMatcher= function(strs) {
 function formatChatOutputMessage(code="", usr_prmpt="", ai_resp="", error="") {
   let message = "";
 
-  if (false && code && code.length) {
+  if (code && code.length) {
     message += "\n------------- Sent Code -------------\n";
     message += code;
     message += "\n";
@@ -1206,7 +1206,11 @@ async function setLayout() {
 
         let aiMsg = globals.outputEditor.getCode();
         if (aiMsg && aiMsg.length && globals.lastSentParams) {
-          globals.outputEditor.setText(formatChatOutputMessage(globals.lastSentParams.code_snippet, globals.lastSentParams.user_prompt, aiMsg, null));
+          globals.outputEditor.setText(formatChatOutputMessage(null, globals.lastSentParams.user_prompt, aiMsg, null));
+          
+          let prompt = globals.lastSentParams.code_snippet + "\n" + globals.lastSentParams.user_prompt;
+          globals.lastSentParams.code_snippet = null;
+          globals.lastSentParams.user_prompt = prompt;
           globals.updateChatHistory(globals.lastSentParams.user_prompt, aiMsg);
         }
       } else {
