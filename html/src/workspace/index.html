@@ -228,8 +228,9 @@
             <label for="SysPromptInput" class="form-label">System Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
                 data-bs-prompt="System" title="Lists all System Prompts created by you"></a>
+              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
             </label>
-            <textarea id="SysPromptInput" class="form-control" rows="6" placeholder="System Prompt"></textarea>
+            <textarea id="SysPromptInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="System Prompt"></textarea>
             <div class="form-text">
               The system prompt helps set the behavior of the LLM/assistant. If properly crafted, the system message
               can be used to set the tone and the kind of response by the model.
@@ -237,9 +238,10 @@
           </div>
           <div class="mb-3 visually-hidden">
             <label for="ContextInput" class="form-label">Context
+              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
               <a id="ContextInputClear" href="#" class="bi bi-x" title="Clear Context"></a>
             </label>
-            <textarea id="ContextInput" class="form-control" rows="6" placeholder="Context"></textarea>
+            <textarea id="ContextInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="Context"></textarea>
             <div class="form-text">
               The overall context of the conversation with the LLM. In a to-and-fro chat scenarios, whole chat
               session history, including the answers by the LLM, becomes part of the context. This is
@@ -251,9 +253,10 @@
             <label for="UsrPromptInput" class="form-label">User Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
                 data-bs-prompt="User" title="List all your User Prompts"></a>
-                <a id="UsrPromptInputClear" href="#" class="bi bi-x" title="Clear User Prompt"></a>
+              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
+              <a id="UsrPromptInputClear" href="#" class="bi bi-x" title="Clear User Prompt"></a>
             </label>
-            <textarea id="UsrPromptInput" class="form-control" rows="6" placeholder="User Prompt"></textarea>
+            <textarea id="UsrPromptInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="User Prompt"></textarea>
             <div class="form-text">
               The user prompt poses the current task or question for the LLM.
             </div>

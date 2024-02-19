@@ -697,7 +697,7 @@ function formatChatOutputMessage(code="", usr_prmpt="", ai_resp="", error="") {
 
   if (code && code.length) {
     message += "\n------------- Sent Code -------------\n";
-    message += code;
+    //message += code;
     message += "\n";
   }
 
@@ -987,7 +987,7 @@ async function setLayout() {
           globals.chatHistory.chatMsg.params = params;
           globals.outputEditor.appendText("\n------------ Sent Code File -------------\n");
 
-          globals.outputEditor.appendText(formatChatOutputMessage(null, params.user_prompt, null, null));
+          globals.outputEditor.appendText(formatChatOutputMessage(globals.editor.getCode(), params.user_prompt, null, null));
           params.user_prompt = prompt;
           globals.llmParamsUI.usrPromParam.setValue("");
           new ChatService().callLLM(globals.chatHistory.chatMsg)
@@ -1114,7 +1114,7 @@ async function setLayout() {
 
           globals.chatHistory.chatMsg.params = params;
           globals.outputEditor.appendText("\n------------- Sent Selected Code -------------\n");
-          globals.outputEditor.appendText(formatChatOutputMessage(null, params.user_prompt, null, null));
+          globals.outputEditor.appendText(formatChatOutputMessage(globals.editor.getSelectedCode(), params.user_prompt, null, null));
           params.user_prompt = prompt;
           globals.llmParamsUI.usrPromParam.setValue("");
           new ChatService().callLLM(globals.chatHistory.chatMsg)
@@ -1206,12 +1206,9 @@ async function setLayout() {
 
         let aiMsg = globals.outputEditor.getCode();
         if (aiMsg && aiMsg.length && globals.lastSentParams) {
-          globals.outputEditor.setText(formatChatOutputMessage(null, globals.lastSentParams.user_prompt, aiMsg, null));
+          globals.outputEditor.setText(formatChatOutputMessage(globals.lastSentParams.code_snippet, globals.lastSentParams.user_prompt, aiMsg, null));
           
-          let prompt = globals.lastSentParams.code_snippet + "\n" + globals.lastSentParams.user_prompt;
-          globals.lastSentParams.code_snippet = null;
-          globals.lastSentParams.user_prompt = prompt;
-          globals.updateChatHistory(globals.lastSentParams.user_prompt, aiMsg);
+          globals.updateChatHistory(globals.lastSentParams.code_snippet + "\n" + globals.lastSentParams.user_prompt, aiMsg);
         }
       } else {
         globals.chatMode = false;
@@ -1224,10 +1221,65 @@ async function setLayout() {
       globals.outputEditor.setText("");
     });
 
+    document.querySelectorAll(".bi-fullscreen").forEach(fullscreenBtn => { 
+      fullscreenBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        toggleFullScreen(e.target.parentElement.getAttribute("for"));
+      });
+    });
+
+    // Add event listener for the "esc" key to exit full-screen mode
+    //document.addEventListener('keydown', event => {
+    //  if (event.key === 'Escape') {
+    //    exitFullScreen();
+    //  }
+    //});
+
     editor1setup();
     editor2setup();
 
     //document.getElementById("evalinput").addEventListener("click", function(event) { UIUtils.addSpinnerToIconButton("SendFileToLLM");  });
+}
+
+// Function to toggle full-screen mode
+function toggleFullScreen(textareaID) {
+  const textarea = document.getElementById(textareaID);
+  if (!document.fullscreenElement) {
+    // Enter full-screen mode
+    if (textarea.requestFullscreen) {
+      textarea.requestFullscreen();
+    } else if (textarea.mozRequestFullScreen) {
+      textarea.mozRequestFullScreen();
+    } else if (textarea.webkitRequestFullscreen) {
+      textarea.webkitRequestFullscreen();
+    } else if (textarea.msRequestFullscreen) {
+      textarea.msRequestFullscreen();
+    }
+  } else {
+    // Exit full-screen mode
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.mozCancelFullScreen) {
+      document.mozCancelFullScreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+  }
+}
+
+// Function to exit full-screen mode
+function exitFullScreen() {
+  if (document.exitFullscreen) {
+    document.exitFullscreen();
+  } else if (document.mozCancelFullScreen) {
+    document.mozCancelFullScreen();
+  } else if (document.webkitExitFullscreen) {
+    document.webkitExitFullscreen();
+  } else if (document.msExitFullscreen) {
+    document.msExitFullscreen();
+  }
 }
 
 function editor1setup() {
