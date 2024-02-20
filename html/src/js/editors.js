@@ -457,7 +457,7 @@ class AceEditor {
     }
   }
 
-  getTopLevelFunctionsFromCode(useSelectedIf=false) {
+  getTopLevelFunctionsFromCode(useSelectedIf=false, withComments=false) {  // Parse the whole file or just the selected part
     if (!this.curFile) {
       UIUtils.showAlert("erroralert", "No File Loaded in Editor");
       return;
@@ -473,7 +473,7 @@ class AceEditor {
     try {
       if (useSelectedIf) {
         let selectedRange = this.editor.getSelectionRange();
-        console.log(selectedRange);
+        //console.log(selectedRange);
         if (selectedRange.start.row == selectedRange.end.row && selectedRange.start.column == selectedRange.end.column) {
           // Nothing is selected
           console.log("Nothing selected");
@@ -487,7 +487,7 @@ class AceEditor {
       }
       
       //console.log(codeToParse, lineOffset);
-      const parsedCode = esprima.parseModule(codeToParse, { range: true, loc: true, tolerant: true, comment: true });  // esprima loc starts at 1 unlike an array
+      const parsedCode = esprima.parseModule(codeToParse, { range: false, loc: true, tolerant: true, comment: withComments });  // esprima loc starts at 1 unlike an array
 
       if (parsedCode.body && parsedCode.body.length > 0) {
         parsedCode.body.forEach(node => {
@@ -515,8 +515,13 @@ class AceEditor {
             }
           }
         });
+
+        if (withComments) {
+          funcDecls = this.mergeComments(funcDecls, parsedCode.comments);
+        }
       } else {
         UIUtils.showAlert("erroralert", "No Functions found.");
+        return null;
       }
 
       //console.log(parsedCode);
@@ -528,8 +533,16 @@ class AceEditor {
     return funcDecls;
   }
 
-  getTopLevelFunctionCode(function_name) {
-    const funcDecls = this.getTopLevelFunctionsFromCode(false);
+  mergeComments(funcDecls, comments) {
+    // Realign comments using the lineOffset and then merge them into code or maybe strip code from comments
+    //console.log(funcDecls);
+    //console.log(comments);
+
+    return funcDecls;
+  }
+
+  getTopLevelFunctionCode(function_name, withcomments=false) {
+    const funcDecls = this.getTopLevelFunctionsFromCode(false, withcomments);
     if (funcDecls) {
       for (const found_function of funcDecls) {
         if (found_function.name == function_name || found_function.name == "exports."+function_name) {
@@ -683,12 +696,13 @@ class AceEditorWithTree extends AceEditor {
     this.tree.removeCurActive();
   }
 
-  reloadTree(fileList) {  // TODO: Remove the Event Listeners on the parent
+  reloadTree(fileList, editableFiles=false) {  // TODO: Remove the Event Listeners on the parent
     if (this.tree) {
       this.tree.destroy();
       this.tree = null;
     }
     this.tree = new TreeView(this.treeID);
+    this.editableFiles = editableFiles;
     this.initialize(fileList);
     this.setupSelectListener(this.treeCallback);
   }

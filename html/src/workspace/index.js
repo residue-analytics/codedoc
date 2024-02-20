@@ -374,7 +374,7 @@ class PageGlobals {
     try {
       await new FilesService().getFiles(null, !this.showingEditableTree).then(
         fileList => {
-              this.readOnlyEditor.reloadTree(fileList);
+              this.readOnlyEditor.reloadTree(fileList, !this.showingEditableTree);
               this.showingEditableTree = !this.showingEditableTree;
 
               // Reinitialize typeahead, File Search
@@ -909,7 +909,7 @@ async function setLayout() {
     });
 
     document.getElementById('ParseFile').addEventListener('click', function () {
-      const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
+      const funcs = globals.editor.getTopLevelFunctionsFromCode(true, true);
       UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
       for (const found_function of funcs) {
         //let code_snippet = globals.editor.getFunctionCode(found_function);
