@@ -1,6 +1,6 @@
 
 import { LLMParams, LLMParamsSnap, CodeFile, ChatMessage, ChatExchange } from "../js/models.js";
-import { ModelService, FilesService, LLMService, LLMParamsService, ChatService } from "../js/services.js";
+import { ModelService, FilesService, LLMService, LLMParamsService, LLMContextService, ChatService } from "../js/services.js";
 import { AceEditor, AceEditorWithMenu, AceEditorWithTree } from "../js/editors.js";
 import { UIUtils, UsersManager, AppGlobals } from "../js/utils.js";
 
@@ -423,6 +423,25 @@ class PageGlobals {
     }
   }
 
+  async saveContext() {
+    let params = this.llmParamsUI.getLLMParams();
+    if (!params) {
+      UIUtils.showAlert("erroralert", `Unable to save Context for [${params}]`);
+      return;
+    }
+
+    let ctxtParam = new LLMParams(params.llmID, 0, 0, 0, null, null, null, null, params.context);
+    new LLMContextService().saveContext(
+      new LLMParamsSnap(Date.now(), (await UsersManager.getLoggedInUser()).fullname, "Saving Context", "", ctxtParam)
+    )
+    .then(resp => {
+        UIUtils.showAlert("erroralert", `Saved [${resp.llmID}] with count [${resp.count}] on server`);
+    })
+    .catch(
+      err => UIUtils.showAlert("erroralert", `Unable to save Context for [${params.llmID}], err [${err}]`)
+    );
+  }
+
   showLLMParamsHistory() {
     new LLMParamsService().getAllParamsHistory()
     .then(history => {
@@ -434,8 +453,8 @@ class PageGlobals {
       const histModal = new bootstrap.Modal("#ParamsHistoryModal");
       histModal.show();
       const escapeHtml = (unsafe) => {
-        return unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-    }
+        return unsafe && unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+      }
       const dataTable = $("#ParamsHistoryTable").DataTable({
         //dom: 'Bfrtip',
         dom: 'B' + "<'row'<'col-md-6'i><'col-md-6'f>>" + 'tr' + "<'row'<'col-md-5'l><'col-md-7'p>>",
@@ -545,9 +564,11 @@ class PageGlobals {
                 
                 //if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID +
                 //  "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
-                    console.log("Approved application!!");
+                    //console.log("Approved application!!");
                     globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
                     UIUtils.showAlert('erroralert', "Loaded " + data.user + "'s Params");
+                    const purpModal = bootstrap.Modal.getInstance("#ParamsHistoryModal");
+                    purpModal && purpModal.hide();
                 //}
               } catch(err) {
                 console.log(err);
@@ -562,46 +583,6 @@ class PageGlobals {
       dataTable.on('init.dt', () => {
         console.log("Table inited");
       });
-
-      /**
-      dataTable.on('click', 'tbody a.bi-box-arrow-in-left', (event) => {
-        event.preventDefault();
-        //console.log(event.currentTarget);
-        //console.log(dataTable.row(event.currentTarget));
-        let data = dataTable.row(event.currentTarget.parentElement.parentElement).data();
-        //console.log(data);
-        if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID + 
-                    "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
-          console.log("Approved application!!");
-          
-          globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
-        }
-      });
-
-      dataTable.on('click', 'tbody a.bi-trash', async (event) => {
-        try {
-          event.preventDefault();
-          //console.log(event.currentTarget);
-          //console.log(dataTable.row(event.currentTarget));
-          let user = await UsersManager.getLoggedInUser();
-          let data = dataTable.row(event.currentTarget.parentElement.parentElement).data();
-          //console.log(data);
-          if (user.fullname != data.user) {
-            UIUtils.showAlert('erroralert', "You don't have permissions to delete this record");
-            return;
-          }
-
-          if (confirm('Delete ' + data.user + "'s params for [" + data.params.llmID + "]") == true) {
-            console.log(`Deleting Record [${data.hash}]!!`);
-            let resp = await new LLMParamsService().deleteParam(data);
-            UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
-          }
-        } catch (err) {
-          console.log(err);
-          UIUtils.showAlert('erroralert', "Unable to delete the prompt record");
-        }
-      });
-      */
     })
     .catch(err => UIUtils.showAlert('erroralert', `Unable to get Params [${err}]`));
   }
@@ -740,6 +721,11 @@ async function setLayout() {
     globals.llmParamsUI.prspenLLMParam = new LLMParamUIPair('PresencePenaltyBtn', 'PresencePenaltyInput', 'range');
     globals.llmParamsUI.topkLLMParam = new LLMParamUIPair('TopkBtn', 'TopkInput', 'number', true, true);
 
+    document.getElementById('ContextInputSave').addEventListener('click', function (e) {
+      e.preventDefault();
+      globals.saveContext();
+    });
+
     document.getElementById('ContextInputClear').addEventListener('click', function (e) {
       e.preventDefault();
       document.getElementById('ContextInput').value = '';
@@ -751,6 +737,7 @@ async function setLayout() {
     });
 
     document.getElementById('SaveParams').addEventListener('click', function (e) {
+      e.preventDefault();
       const purpModal = new bootstrap.Modal("#ParamsPurposeModal");
       purpModal.show();
     });
@@ -1155,7 +1142,7 @@ async function setLayout() {
         const button = event.relatedTarget;
         const type = button.getAttribute("data-bs-prompt");
 
-        modal.querySelector('.modal-title').textContent = `All saved ${type} Prompts`
+        modal.querySelector('.modal-title').textContent = `All your saved ${type} Prompts`
 
         const modalBody = modal.querySelector('.modal-body');
 
@@ -1194,6 +1181,122 @@ async function setLayout() {
       dataTable.columns.adjust().draw();
       // dataTable.fixedHeader.adjust();  // Fixed Header won't work in Bootstrap Modal
     });
+
+    $("#ContextListModal").on('show.bs.modal', async (event) => {
+
+      const modal = event.target;
+      const modalBody = modal.querySelector('.modal-body');
+      const escapeHtml = (unsafe) => {
+        return unsafe && unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+      }
+
+      try {
+          const contextHistory = await new LLMContextService().getAllContexts();
+
+          if (contextHistory.count() == 0) {
+              modalBody.innerHTML = "<h1> No Contexts Saved </h1>";
+          } else {
+            modalBody.innerHTML = '<table id="ContextListTable" class="table table-sm table-bordered table-hover" style="width:100%"></table>';
+            const dataTable = $("#ContextListTable").DataTable({
+              dom: 'Bfrtip',
+              destroy: true,
+              data: contextHistory.records,   // Array of JSON flat objects, not LLMParams Model objects
+              scrollX: true,
+              scrollY: '65vh',
+              scrollCollapse: true,
+              paging: false,
+              select: {
+                items: 'row',
+                style: 'single',
+                toggleable: true
+              },
+              columns: [
+                { data: "tm", title: 'Timestamp' },
+                { data: "context", title: 'Context' },
+              ],
+              columnDefs: [
+                { targets: 0, render: DataTable.render.datetime() },
+                { targets: 1, render: function (data, type, row, meta) { 
+                    if (type === 'display') {
+                      return '<p style="white-space: pre-line;">' + data + '</p>';
+                    }
+                    return data;
+                  }
+                }
+              ],
+              language: {
+                select: {
+                  rows: {
+                    _: "Selected %d rows",
+                    0: "Click a row to select it",
+                    1: "Selected 1 row"
+                  }
+                }
+              },
+              buttons: [
+                {
+                  extend: 'selectedSingle',
+                  text: 'Delete Selected Context',
+                  action: async function ( e, dt, node, config ) {
+                    e.preventDefault();
+                    try {
+                      //console.log(event.currentTarget);
+                      //console.log(dataTable.row(event.currentTarget));
+                      let user = await UsersManager.getLoggedInUser();
+                      let data = dt.row( { selected: true } ).data();
+                      //console.log(data);
+                      if (user.fullname != data.user) {
+                        UIUtils.showAlert('erroralert', "You don't have permissions to delete this record");
+                        return;
+                      }
+      
+                      if (confirm('Delete ' + data.user + "'s context") == true) {
+                        console.log(`Deleting Record [${data.hash}]!!`);
+                        let resp = await new LLMContextService().deleteContext(data);
+                        UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
+                        let updatedHist = await new LLMContextService().getAllContexts();
+                        dt.clear();
+                        dt.rows.add(updatedHist.records); // Add new data
+                        dt.columns.adjust().draw(); // Redraw the DataTable
+                      }
+                    } catch (err) {
+                      console.log(err);
+                      UIUtils.showAlert('erroralert', "Unable to delete the context record [" + err + "]");
+                    }
+                  }
+                },
+                {
+                  extend: 'selectedSingle',
+                  text: 'Load Selected Context',
+                  action: function ( e, dt, node, config ) {
+                    e.preventDefault();
+                    try {
+                      let data = dt.row({ selected: true }).data();
+                      globals.llmParamsUI.ctxParam.setValue(data.context);
+                      UIUtils.showAlert('erroralert', "Loaded " + data.user + "'s Context");
+                      const purpModal = bootstrap.Modal.getInstance("#ContextListModal");
+                      purpModal && purpModal.hide();
+                    } catch(err) {
+                      console.log(err);
+                      UIUtils.showAlert('erroralert', "Unable to load the Context [" + err + "]");
+                    }
+                  }
+                },
+              ]
+            });
+            
+            //let allContexts = "<ol>";
+            //  contextParams.forEach(param => {
+            //      allContexts += `<li style="white-space: pre-line;"> ${param.context} </li>`;
+            //  });
+            //  allContexts += "</ol>";
+            //  modalBody.innerHTML = allContexts;
+          }
+      } catch (err) {
+          console.log(err);
+          UIUtils.showAlert('erroralert', err);
+      }
+  });
 
     document.getElementById('EnableChatMode').addEventListener('click', function () {
       if (this.checked) {

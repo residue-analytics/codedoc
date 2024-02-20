@@ -6,10 +6,10 @@ from datetime            import datetime
 
 from fastapi             import Depends, APIRouter, HTTPException
 
-from libs.data           import LLMParamsHistory, LLMParams, LLMParamsSnap
+from libs.data           import LLMParamsHistory, LLMParams, LLMParamsSnap, LLMContextHistory
 from libs.auth           import get_current_active_user, User, sqlite_dbname
 from libs                import user_db
-from libs.user_db        import UserDatabase, ParamsDatabase
+from libs.user_db        import UserDatabase, ParamsDatabase, ParamsType
 
 
 __version__ = "0.1"
@@ -190,7 +190,7 @@ def get_models(current_user: Annotated[User, Depends(get_current_active_user)]) 
 def get_all_params_history(current_user: Annotated[User, Depends(get_current_active_user)]) -> LLMParamsHistory:
     params_db = ParamsDatabase(sqlite_dbname)
     users_db = UserDatabase(sqlite_dbname)
-    db_params = params_db.get_all_params()
+    db_params = params_db.get_all_params(ParamsType.LLM_PARAMS)
     if db_params:
         params_list = []
         for param in db_params:
@@ -205,7 +205,7 @@ def get_all_params_history(current_user: Annotated[User, Depends(get_current_act
 @router.get("/params/")
 def get_all_params(current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
-    db_params = params_db.get_params_by_username(current_user.username)
+    db_params = params_db.get_params_by_username(current_user.username, ParamsType.LLM_PARAMS)
     if db_params:
         params_list = []
         for param in db_params:
@@ -213,10 +213,28 @@ def get_all_params(current_user: Annotated[User, Depends(get_current_active_user
         return { 'param_list': params_list }
     raise HTTPException(status_code=404, detail={'msg':f"Params not available"})
 
+@router.get("/context/")
+def get_all_contexts(current_user: Annotated[User, Depends(get_current_active_user)]) -> LLMContextHistory:
+    params_db = ParamsDatabase(sqlite_dbname)
+    users_db = UserDatabase(sqlite_dbname)
+    #db_params = params_db.get_params_by_username(current_user.username, ParamsType.LLM_CONTEXT)
+    db_params = params_db.get_all_params(ParamsType.LLM_CONTEXT)
+    if db_params:
+        params_list = []
+        for param in db_params:
+            param_dict = param.toDict()
+            param_dict['context'] = json.loads(param.data)['context']
+            param_dict['user'] = users_db.get_user_by_id(param.user_id).fullname
+            param_dict['hash'] = param_dict['data_hash']
+            params_list.append(param_dict)
+        return LLMContextHistory(records=params_list)
+
+    raise HTTPException(status_code=404, detail={'msg':f"Contexts not available"})
+
 @router.get("/params/{llmID}")
 def get_params(llmID:str, current_user: Annotated[User, Depends(get_current_active_user)]) -> LLMParams:
     params_db = ParamsDatabase(sqlite_dbname)
-    db_params = params_db.get_latest_by_name_username(llmID, current_user.username)
+    db_params = params_db.get_latest_by_name_username(llmID, current_user.username, ParamsType.LLM_PARAMS)
     if db_params:
         return  json.loads(db_params.data)
     raise HTTPException(status_code=404, detail={'msg':f"No params for Model ID [{llmID}] saved by you"})
@@ -226,15 +244,35 @@ def save_params(llmID: str, paramsnp: LLMParamsSnap,
               current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
     params_db.add_params_by_username(user_db.LLMParamsRec(llmID, None, int(datetime.now().timestamp()*1000), 
-                                                       paramsnp.purpose, paramsnp.params.model_dump_json()), current_user.username)
+                                                       paramsnp.purpose, paramsnp.params.model_dump_json(), None,
+                                                       ParamsType.LLM_PARAMS), 
+                                                       current_user.username)
     count = params_db.get_count_by_name(current_user.username, llmID)
+    return {'llmID': llmID, 'count': count }
+
+@router.put("/context/{llmID}")
+def save_context(llmID: str, paramsnp: LLMParamsSnap, 
+              current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
+    params_db = ParamsDatabase(sqlite_dbname)
+    params_db.add_params_by_username(user_db.LLMParamsRec(llmID, None, int(datetime.now().timestamp()*1000), 
+                                                       paramsnp.purpose, paramsnp.params.model_dump_json(), None,
+                                                       ParamsType.LLM_CONTEXT), 
+                                                       current_user.username)
+    count = params_db.get_count_by_name(current_user.username, llmID, ParamsType.LLM_CONTEXT)
     return {'llmID': llmID, 'count': count }
 
 @router.delete("/params/{data_hash}")
 def delete_param(data_hash:str, 
                  current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
-    count = params_db.delete_param(current_user.username, data_hash)
+    count = params_db.delete_param(current_user.username, data_hash, ParamsType.LLM_PARAMS)
+    return {'deleted': count}
+
+@router.delete("/context/{data_hash}")
+def delete_context(data_hash:str, 
+                 current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
+    params_db = ParamsDatabase(sqlite_dbname)
+    count = params_db.delete_param(current_user.username, data_hash, ParamsType.LLM_CONTEXT)
     return {'deleted': count}
 
 if __name__ == '__main__':

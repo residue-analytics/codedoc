@@ -69,8 +69,17 @@ class LLMParamsSnap(BaseModel):
     hash: str
     params: LLMParams
 
+class LLMContextSnap(BaseModel):
+    tm: int
+    user: str
+    hash: str
+    context: str
+
 class LLMParamsHistory(BaseModel):
     records: List[LLMParamsSnap]
+
+class LLMContextHistory(BaseModel):
+    records: List[LLMContextSnap]
 
 if __name__ == '__main__':
   print ('Cannot execute as a program, it is a module')

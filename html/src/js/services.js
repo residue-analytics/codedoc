@@ -1,4 +1,4 @@
-import { Model, ModelList, CodeFile, LLMParams, LLMParamsHistory, User } from "./models.js";
+import { Model, ModelList, CodeFile, LLMParams, LLMParamsHistory, LLMContextHistory, User } from "./models.js";
 
 class WebError extends Error {
 
@@ -252,6 +252,60 @@ class LLMParamsService {
   }
 }
 
+class LLMContextService {
+  constructor() {
+  }
+
+  async getAllContexts() {
+    const response = await new FetchAPI().get('/context/');
+    if (response.records) {
+      return new LLMContextHistory(response);
+    } else {
+      console.log(response);
+      throw new Error('Unable to fetch all params');
+    }
+  }
+
+  async getContext(llmID) {
+    const response = await new FetchAPI().get('/context/' + llmID);
+    if (response.llmID && response.llmID == llmID) {
+      return LLMParams.fromJSON(response);
+    } else {
+      console.log(response);
+      throw new Error(`Unable to fetch Params for [${llmID}]`);
+    }
+  }
+
+  async saveContext(paramsnp) {
+    if (!paramsnp) {
+      throw new Error(`Cannot save null LLM Context.`);
+    }
+
+    const response = await new FetchAPI().put('/context/' +paramsnp.params.llmID, paramsnp.toJSON());
+    if (response.llmID && response.count) {
+      return response;
+    } else {
+      console.log(`Incomplete Save Context response [${JSON.stringify(response)}]`);
+      throw new Error("Unable to save Context successfully, see console");
+    }
+  }
+
+  async deleteContext(paramSnap) {
+    if (!paramSnap || !paramSnap.hash) {
+      throw new Error(`Cannot delete null LLM Context.`);
+    }
+
+    const response = await new FetchAPI().delete('/context/' + paramSnap.hash);  // no Query, no Body
+    if (response.deleted > 0) {
+      return response;
+    } else {
+      console.log(`Unable to delete Context. Response [${JSON.stringify(response)}]`);
+      throw new Error("Unable to delete context successfully, see console");
+    }
+  }
+}
+
+
 class LLMService {
   constructor() {
   }
@@ -314,4 +368,4 @@ class LoginService {
   }
 }
 
-export { WebError, FetchAPI, ModelService, FilesService, LLMService, ChatService, LLMParamsService, LoginService }
+export { WebError, FetchAPI, ModelService, FilesService, LLMService, ChatService, LLMParamsService, LLMContextService, LoginService }

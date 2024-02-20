@@ -212,6 +212,33 @@ class LLMParamsSnap {
   }
 }
 
+class LLMContextSnap {
+  constructor(tm=null, user="", hash="", context=None) {
+    this.tm = tm;
+    this.user = user;
+    this.hash = hash;
+    this.context = context;
+  }
+
+  toJSON() {
+    return {
+      tm: this.tm,
+      user: this.user,
+      hash: this.hash,
+      context: this.context,
+    };
+  }
+
+  static fromJSON(json) {
+    return new LLMContextSnap(
+      json.tm, 
+      json.user, 
+      json.hash, 
+      json.context
+    );
+  }
+}
+
 class LLMParamsHistory {
   constructor(paramsSnaps={records:[]}) {
     this.records = paramsSnaps.records;
@@ -255,6 +282,52 @@ class LLMParamsHistory {
     }
 
     throw new Error("Cannot create Params History without history records");
+  }
+}
+
+class LLMContextHistory {
+  constructor(contextSnaps={records:[]}) {
+    this.records = contextSnaps.records;
+    this.user_tm_tree = new Map();
+    if (this.records && this.records.length > 0) {
+      this.updateTree(this.records);
+    }
+  }
+
+  count() {
+    return this.records.length;
+  }
+
+  updateTree(contextSnaps) {
+    contextSnaps.forEach((contextSnap) => {
+      const tm_tree = this.user_tm_tree.get(contextSnap.user);
+      if (tm_tree) {
+        tm_tree[contextSnap.tm] = LLMContextSnap.fromJSON(contextSnap);
+      } else {
+        const tm_tree = new Map();
+        tm_tree[contextSnap.tm] = LLMContextSnap.fromJSON(contextSnap);
+        this.user_tm_tree[contextSnap.user] = tm_tree;
+      }
+    });
+  }
+
+  addContext(context) {
+    this.records.append(context);
+    this.updateTree([context]);
+  }
+
+  toJSON() {
+    return {
+      records: this.records.map((contextSnap) => contextSnap.toJSON())
+    }
+  }
+
+  static fromJSON(json) {
+    if (json.records && json.records.length > 0) {
+      return new LLMContextHistory(json);
+    }
+
+    throw new Error("Cannot create Context History without history records");
   }
 }
 
@@ -422,4 +495,4 @@ class GlobalData {
 
 
 export { Model, ModelKwargs, LLMParams, ModelList, LLMParamsSnap, LLMParamsHistory, CodeFile, 
-         CodeFileCache, User, GlobalData, FileTree, ChatExchange, ChatMessage }
+         CodeFileCache, User, GlobalData, FileTree, ChatExchange, ChatMessage, LLMContextSnap, LLMContextHistory }
