@@ -468,6 +468,7 @@ class PageGlobals {
         //  header: true,         // https://datatables.net/forums/discussion/41126/how-can-fixedheader-work-for-bootstrap-modal
         //  headerOffset: 200 
         //},
+        order: [[0, 'desc']],
         select: {
           items: 'row',
           style: 'single',
@@ -825,6 +826,14 @@ async function setLayout() {
       globals.editor.redo();
     });
     
+    document.getElementById('ROFileToCtx').addEventListener('click', function (event) {
+      globals.llmParamsUI.addToContextParam(globals.readOnlyEditor.getCode());
+    });
+
+    document.getElementById('ROSelectionToCtx').addEventListener('click', function (event) {
+      globals.llmParamsUI.addToContextParam(globals.readOnlyEditor.getSelectedCode());
+    });
+
     document.getElementById('FileToCtx').addEventListener('click', function (event) {
       globals.llmParamsUI.addToContextParam(globals.editor.getCode());
     });
@@ -833,6 +842,22 @@ async function setLayout() {
       globals.llmParamsUI.addToContextParam(globals.editor.getSelectedCode());
     });
     
+    document.getElementById('FunctionToCtx').addEventListener('click', function (event) {
+      let func_name = globals.editor.getSelectedCode();
+      if (func_name && !func_name.includes("\n") && !func_name.includes("(")) {
+        let code = globals.editor.getTopLevelFunctionCode(func_name);
+        if (code) {
+          globals.llmParamsUI.addToContextParam(code);
+          globals.llmParamsUI.ctxParam.show();
+          UIUtils.showAlert("erroralert", `Added function [${func_name}] to Context.`);
+        } else {
+          UIUtils.showAlert("erroralert", `Unable to find function [${func_name}].`);
+        }
+      } else {
+        UIUtils.showAlert("erroralert", `Pls select name string of a function, not this [${func_name}].`);
+      }
+    });
+
     document.getElementById('ReloadCtx').addEventListener('click', function (event) {
       if (globals.lastSentParams) {
         document.getElementById('ContextInput').value = '';
@@ -1205,6 +1230,7 @@ async function setLayout() {
               scrollY: '65vh',
               scrollCollapse: true,
               paging: false,
+              order: [[0, 'desc']],
               select: {
                 items: 'row',
                 style: 'single',

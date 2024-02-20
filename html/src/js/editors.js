@@ -486,7 +486,7 @@ class AceEditor {
         codeToParse = this.getCode();
       }
       
-      console.log(codeToParse, lineOffset);
+      //console.log(codeToParse, lineOffset);
       const parsedCode = esprima.parseModule(codeToParse, { range: true, loc: true, tolerant: true, comment: true });  // esprima loc starts at 1 unlike an array
 
       if (parsedCode.body && parsedCode.body.length > 0) {
@@ -526,6 +526,19 @@ class AceEditor {
     }
 
     return funcDecls;
+  }
+
+  getTopLevelFunctionCode(function_name) {
+    const funcDecls = this.getTopLevelFunctionsFromCode(false);
+    if (funcDecls) {
+      for (const found_function of funcDecls) {
+        if (found_function.name == function_name || found_function.name == "exports."+function_name) {
+          return this.getFunctionCode(found_function);
+        }
+      }
+    }
+
+    return null;
   }
 
   isFileLocked() {
@@ -730,7 +743,8 @@ class AceEditorWithMenu extends AceEditor {
       ShowHidden: { title: 'Toggle between completion JSON and Model output', icon: 'bi-filetype-json', toggle: true, handler: () => this.toggleHiddenContent() },
       fileLock: { title: 'Keep the file in this Editor', icon: 'bi-file-lock', toggle: true, handler: () => this.toggleFileLocked() },
       readOnly: { title: 'Toggle Read Only Mode', icon: 'bi-book', toggle: true, handler: () => this.toggleReadOnly() },
-      empty: { title: 'Truncate Content / File', icon: 'bi-x', handler: () => this.setText("") }
+      empty: { title: 'Truncate Content / File', icon: 'bi-x', handler: () => this.setText("") },
+      memorize: { title: 'Add the highlighted Text to Memory', icon: 'bi-cart-plus', toggle: false, handler: null }
     };
   
     // Create and append buttons to the group

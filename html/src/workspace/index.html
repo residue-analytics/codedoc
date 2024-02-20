@@ -155,7 +155,20 @@
         </div>
 
         <div class="mb-3">
-          <div class="btn-group" role="group" aria-label="Second group">
+          <div class="btn-group" role="group" aria-label="Read Only Editor Operations">
+            <button id="ROFileToCtx" type="button" class="btn btn-primary btn-sm"
+              title="Add Read Only File to Context">
+              <span class="bi bi-journal-code"></span>
+            </button>
+            <button id="ROSelectionToCtx" type="button" class="btn btn-primary btn-sm"
+              title="Add Read Only Selected Text to Context"> 
+              <span class="bi bi-journal-text"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <div class="btn-group" role="group" aria-label="Modifiable Editor Operations">
             <button id="FileToCtx" type="button" class="btn btn-primary btn-sm"
               title="Add File to Context">
               <span class="bi bi-journal-code"></span>
@@ -163,6 +176,10 @@
             <button id="SelectionToCtx" type="button" class="btn btn-primary btn-sm"
               title="Add Selected Text to Context"> 
               <span class="bi bi-journal-text"></span>
+            </button>
+            <button id="FunctionToCtx" type="button" class="btn btn-primary btn-sm"
+              title="Find & Add Selected Function Name (in same file) to Context">
+              <span class="bi bi-braces"></span>
             </button>
             <button id="ReloadCtx" type="button" class="btn btn-primary btn-sm"
               title="Reload Context - In Chat Mode (First Message in this session) / In Non-chat Mode (Last Sent Message)">
@@ -172,7 +189,7 @@
         </div>
 
         <div class="mb-3">
-          <div class="btn-group" role="group" aria-label="Second group">
+          <div class="btn-group" role="group" aria-label="Fourth group">
             <input type="checkbox" class="btn-check" id="EnableChatMode" autocomplete="off">
             <label class="btn btn-primary btn-sm" for="EnableChatMode" title="Enable/Disable Chat Mode">
               <span class="bi bi-chat-left-text"></span>
@@ -228,7 +245,7 @@
             <label for="SysPromptInput" class="form-label">System Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
                 data-bs-prompt="System" title="Lists all System Prompts created by you"></a>
-              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
+              <a href="#" class="bi bi-fullscreen" title="Full Screen Textarea (ESC to exit)"></a>
             </label>
             <textarea id="SysPromptInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="System Prompt"></textarea>
             <div class="form-text">
@@ -239,9 +256,9 @@
           <div class="mb-3 visually-hidden">
             <label for="ContextInput" class="form-label">Context
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#ContextListModal"
-                title="List all your saved Contexts"></a>
-              <a id="ContextInputSave" href="#" class="bi bi-floppy" title="Save Context"></a>
-              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
+                title="List all Saved Contexts"></a>
+              <a id="ContextInputSave" href="#" class="bi bi-floppy" title="Save Context on Server"></a>
+              <a href="#" class="bi bi-fullscreen" title="Full Screen Textarea (ESC to exit)"></a>
               <a id="ContextInputClear" href="#" class="bi bi-x" title="Clear Context"></a>
             </label>
             <textarea id="ContextInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="Context"></textarea>
@@ -256,7 +273,7 @@
             <label for="UsrPromptInput" class="form-label">User Prompt
               <a href="#" class="bi bi-list" data-bs-toggle="modal" data-bs-target="#PromptsListModal"
                 data-bs-prompt="User" title="List all your User Prompts"></a>
-              <a href="#" class="bi bi-fullscreen" title="Full Screen (ESC to exit)"></a>
+              <a href="#" class="bi bi-fullscreen" title="Full Screen Textarea (ESC to exit)"></a>
               <a id="UsrPromptInputClear" href="#" class="bi bi-x" title="Clear User Prompt"></a>
             </label>
             <textarea id="UsrPromptInput" class="form-control font-monospace lh-sm fs-6" rows="6" placeholder="User Prompt"></textarea>
