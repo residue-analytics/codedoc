@@ -261,6 +261,13 @@ class AceEditor {
     return "";
   }
 
+  getFileVersion() {
+    if (this.curFile) {
+      return this.curFile.version;
+    }
+    return "";
+  }
+
   getNumLines() {
     return this.editor.session.getLength();
   }
@@ -404,6 +411,7 @@ class AceEditor {
   }
 
   getCurFile() {
+    // TODO: Why is there no check for whether a file is present or not?
     return new CodeFile(this.curFile.name, this.curFile.version, this.getCode());
   }
 

@@ -11,7 +11,7 @@
           <div class="accordion-body">
             <div class="row row-cols-1 row-cols-lg-2 justify-content-left align-items-top">
               <div class="col">
-                <div id="editor1_toolbar" class="btn-toolbar aceeditor_cmdbar pe-0" role="toolbar" aria-label="Editor toolbar with button groups">
+                <div id="editor1_toolbar" class="btn-toolbar justify-content-between aceeditor_cmdbar pe-0" role="toolbar" aria-label="Read Only Editor toolbar with button groups">
                   <div class="btn-group" role="group" aria-label="First group">
                     <div id="scrollable-dropdown-menu">
                       <input class="typeahead" type="text" placeholder="File Search">
@@ -32,9 +32,14 @@
                       title="Toggle Code Folding">
                       <span class="bi bi-arrows-collapse"></span>
                     </button>
-                    
+                  </div>
+                  <div class="btn-group" role="group">
+                    <button id="ROCurrentFilename" type="button" class="btn btn-sm text-light" title="Currently showing filename: [none]">
+                      <span class="bi bi-question"></span>
+                    </button>
                   </div>
                 </div>
+
                 <div>
                   <div class="row app_editor mx-0" style="max-height: 800px;">
                     <div id="editor1Tree" class="col-4 border h-100 dirtree">
@@ -95,12 +100,16 @@
                       </button>
                     </div>
                     <div class="btn-group" role="group">
+                      <button id="CurrentFilename" type="button" class="btn btn-sm text-light" title="Currently showing filename: [none]">
+                        <span class="bi bi-question"></span>
+                      </button>
                       <button type="button" class="btn btn-sm text-light" title="See all keyboard shortcuts, opens a new window/tab"
                         onclick="window.open('https://github.com/ajaxorg/ace/wiki/Default-Keyboard-Shortcuts')">
                         <span class="bi bi-info"></span>
                       </button>
                     </div>
                   </div>
+
                   <div id="editor2_editor" class="app_editor">
           Select a file in the folder tree view, to edit it here.
                   </div>

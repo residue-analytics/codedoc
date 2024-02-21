@@ -784,6 +784,14 @@ async function setLayout() {
       globals.toggleReadOnlyEditorTree();
     });
 
+    document.getElementById('ROCurrentFilename').addEventListener('mouseover', function (e) {
+      if (globals.readOnlyEditor.getFilename() && globals.readOnlyEditor.getFilename().length) {
+        e.target.setAttribute('title', globals.readOnlyEditor.getFilename() + " Ver: " + globals.readOnlyEditor.getFileVersion());
+      } else {
+        e.target.setAttribute('title', "No File in Editor");
+      }
+    });
+
     $('#scrollable-dropdown-menu .typeahead').bind('typeahead:select', function(ev, suggestion) {
       console.log('Selection: ' + suggestion);
       globals.readOnlyEditor.showFile(suggestion);
@@ -992,6 +1000,14 @@ async function setLayout() {
       }
 
       globals.editor.toggleHiddenContent();
+    });
+
+    document.getElementById('CurrentFilename').addEventListener('mouseover', function (e) {
+      if (globals.editor.getFilename() && globals.editor.getFilename().length) {
+        e.target.setAttribute('title', globals.editor.getFilename() + " Ver: " + globals.editor.getFileVersion());
+      } else {
+        e.target.setAttribute('title', "No File in Editor");
+      }
     });
 
     document.getElementById('SendToLLM').addEventListener('click', function () {
