@@ -4,7 +4,7 @@ class UIUtils {
   static showAlert(alertNodeID, message, durSecs = 5) {
     const parentDiv = document.getElementById(alertNodeID);
     const alert = document.createElement('div');
-    alert.id = alertNodeID + "-child";
+    alert.id = alertNodeID + "-child" + parentDiv.children.length;
     alert.className = 'row alert alert-warning alert-dismissible fade show';
     alert.role = 'alert';
 

@@ -776,6 +776,10 @@ async function setLayout() {
       globals.readOnlyEditor.toggleWordWrap();
     });
 
+    document.getElementById('ToggleFoldingReadOnly').addEventListener('click', function () {
+      globals.readOnlyEditor.toggleCodeFolding();
+    });
+
     document.getElementById('SwitchReadOnlyTree').addEventListener('click', function () {
       globals.toggleReadOnlyEditorTree();
     });
@@ -832,6 +836,31 @@ async function setLayout() {
 
     document.getElementById('ROSelectionToCtx').addEventListener('click', function (event) {
       globals.llmParamsUI.addToContextParam(globals.readOnlyEditor.getSelectedCode());
+    });
+
+    document.getElementById('ROFunctionToCtx').addEventListener('click', function (event) {
+      let from_editor = null;
+      let func_name = globals.editor.getSelectedCode();
+      if (func_name && !func_name.includes("\n") && !func_name.includes("(")) {
+        from_editor = "Editable File";
+      } else {
+        func_name = globals.readOnlyEditor.getSelectedCode();
+        if (func_name && !func_name.includes("\n") && !func_name.includes("(")) {
+          from_editor = "Read only";
+        } else {
+          UIUtils.showAlert("erroralert", `Pls select name string of a function, not this [${func_name}].`);
+          return;
+        }
+      }
+
+      let code = globals.readOnlyEditor.getTopLevelFunctionCode(func_name, true, true);  // Find the given function along with all comments
+      if (code) {
+        globals.llmParamsUI.addToContextParam(code);
+        globals.llmParamsUI.ctxParam.show();
+        UIUtils.showAlert("erroralert", `<p>Added function name <b>[${func_name}]</b> selected in [${from_editor}] Editor to Context.</p>`, 10);
+      } else {
+        UIUtils.showAlert("erroralert", `<p>Unable to find function name [${func_name}] in <b>[Read Only]</b> Editor.</p>`, 10);
+      }
     });
 
     document.getElementById('FileToCtx').addEventListener('click', function (event) {
@@ -934,11 +963,14 @@ async function setLayout() {
         // Button is getting Active, show comments
         let comments = globals.editor.getAllComments();
         if (comments && comments.length) {
-           globals.editor.hiddenContent = comments;
-           UIUtils.showAlert("erroralert", "Any changes made in the comments will be lost after toggling back to original.");
+          globals.editor.hiddenContent = comments;
+          document.getElementById('SaveFile').disabled = true;
+          UIUtils.showAlert("erroralert", "Any changes made in the comments will be lost after toggling back to original.");
         } else {
           return;
         }
+      } else {
+        document.getElementById('SaveFile').disabled = false;
       }
 
       globals.editor.toggleHiddenContent();
@@ -949,11 +981,14 @@ async function setLayout() {
         // Button is getting Active, show code without comments
         let code = globals.editor.stripAllComments();
         if (code && code.length) {
-           globals.editor.hiddenContent = code;
-           UIUtils.showAlert("erroralert", "Any changes made in the code will be lost after toggling back to original.");
+          globals.editor.hiddenContent = code;
+          document.getElementById('SaveFile').disabled = true;
+          UIUtils.showAlert("erroralert", "Any changes made in the code will be lost after toggling back to original.");
         } else {
           return;
         }
+      } else {
+        document.getElementById('SaveFile').disabled = false;
       }
 
       globals.editor.toggleHiddenContent();
