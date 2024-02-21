@@ -845,7 +845,7 @@ async function setLayout() {
     document.getElementById('FunctionToCtx').addEventListener('click', function (event) {
       let func_name = globals.editor.getSelectedCode();
       if (func_name && !func_name.includes("\n") && !func_name.includes("(")) {
-        let code = globals.editor.getTopLevelFunctionCode(func_name);
+        let code = globals.editor.getTopLevelFunctionCode(func_name, true, true);  // Find the given function along with all comments
         if (code) {
           globals.llmParamsUI.addToContextParam(code);
           globals.llmParamsUI.ctxParam.show();
@@ -909,13 +909,14 @@ async function setLayout() {
     });
 
     document.getElementById('ParseFile').addEventListener('click', function () {
-      const funcs = globals.editor.getTopLevelFunctionsFromCode(true, true);
+      const funcs = globals.editor.getTopLevelFunctionsFromCode(true, true, true);
       UIUtils.showAlert("erroralert", `Found [${funcs.length}] functions in [${globals.editor.getFilename()}] file`);
-      for (const found_function of funcs) {
+      //for (const found_function of funcs) {
         //let code_snippet = globals.editor.getFunctionCode(found_function);
-        console.log(found_function.name);
+        //console.log(found_function.name);
+        //console.log(found_function.code);
         //console.log(code_snippet);
-      }
+      //}
       //console.log(funcs);
     });
 
@@ -925,6 +926,37 @@ async function setLayout() {
 
     document.getElementById('ReadOnly').addEventListener('click', function () {
       globals.editor.toggleReadOnly();
+    });
+
+    document.getElementById('ShowAllComments').addEventListener('click', function (e) {
+
+      if (e.currentTarget.classList.contains('active')) {
+        // Button is getting Active, show comments
+        let comments = globals.editor.getAllComments();
+        if (comments && comments.length) {
+           globals.editor.hiddenContent = comments;
+           UIUtils.showAlert("erroralert", "Any changes made in the comments will be lost after toggling back to original.");
+        } else {
+          return;
+        }
+      }
+
+      globals.editor.toggleHiddenContent();
+    });
+
+    document.getElementById('StripAllComments').addEventListener('click', function (e) {
+      if (e.currentTarget.classList.contains('active')) {
+        // Button is getting Active, show code without comments
+        let code = globals.editor.stripAllComments();
+        if (code && code.length) {
+           globals.editor.hiddenContent = code;
+           UIUtils.showAlert("erroralert", "Any changes made in the code will be lost after toggling back to original.");
+        } else {
+          return;
+        }
+      }
+
+      globals.editor.toggleHiddenContent();
     });
 
     document.getElementById('SendToLLM').addEventListener('click', function () {
@@ -1050,7 +1082,7 @@ async function setLayout() {
 
       globals.outputEditor.setText("");
 
-      const funcs = globals.editor.getTopLevelFunctionsFromCode(true);
+      const funcs = globals.editor.getTopLevelFunctionsFromCode(true, true, true); // Use Selected code, with all comments
       if (funcs.length === 0) {
         UIUtils.showAlert("erroralert", "No functions found in the code");
       } else {
@@ -1066,7 +1098,8 @@ async function setLayout() {
           all_resps.push(this_resp);
           globals.outputEditor.appendText(`===== ${globals.editor.getFilename()} / ${found_function.name} =====`);
 
-          params.code_snippet = globals.editor.getFunctionCode(found_function);
+          //params.code_snippet = globals.editor.getFunctionCode(found_function);
+          params.code_snippet = found_function.code;
           //console.log(params.code_snippet);
           if (!params.code_snippet || params.code_snippet.length == 0) {
               UIUtils.showAlert("erroralert", "Nothing to send from [" + found_function.name + "()] function");

@@ -457,7 +457,65 @@ class AceEditor {
     }
   }
 
-  getTopLevelFunctionsFromCode(useSelectedIf=false, withComments=false) {  // Parse the whole file or just the selected part
+  _formatCommentFromASTNode(comment) {
+    let newComment = "";
+    if (comment.type == 'Block') {
+      newComment += "/*" + comment.value + "*/\n";
+    } else if (comment.type == 'Line') {
+      newComment += "//" + comment.value + "\n";
+    } else {
+      newComment += comment.value;
+    }
+    return newComment;
+  }
+
+  getAllComments() {
+    if (!this.curFile) {
+      UIUtils.showAlert("erroralert", "No File Loaded in Editor");
+      return;
+    }
+
+    if (!this.curFile.name.endsWith(".js")) {
+      UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
+      return;
+    }
+
+    let parsedCode = esprima.parseModule(this.getCode(), { loc: true, tolerant: true, comment: true });
+    if (parsedCode.comments.length > 0) {
+      let allComments = "";
+      parsedCode.comments.forEach(comment => {
+        allComments += this._formatCommentFromASTNode(comment);
+      });
+
+      return allComments;
+    } else {
+      UIUtils.showAlert("erroralert", "No Comments found in the code");
+    }
+
+    return null;
+  }
+
+  stripAllComments() {
+    if (!this.curFile) {
+      UIUtils.showAlert("erroralert", "No File Loaded in Editor");
+      return;
+    }
+
+    if (!this.curFile.name.endsWith(".js")) {
+      UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
+      return;
+    }
+
+    let parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, tokens: true, comment: true });
+    parsedCode = escodegen.attachComments(parsedCode, parsedCode.comments, parsedCode.tokens);
+    return escodegen.generate(parsedCode, {comment: false});
+  }
+
+  getTopLevelFunctionsFromCode(useSelectedIf=false, withComments=false, withHeaderComments=false) {  
+    // useSelectedIf Parse the whole file or just the selected part
+    // withComments for comments inside the function, line or block
+    // withHeaderComments for comments occurring before the function (header)
+
     if (!this.curFile) {
       UIUtils.showAlert("erroralert", "No File Loaded in Editor");
       return;
@@ -470,6 +528,7 @@ class AceEditor {
 
     let funcDecls = [];
     let codeToParse = null, lineOffset = 0;
+    let wholeFileParsed = true;  // escodegen, 'comment: true' option includes header comments when whole file is parsed
     try {
       if (useSelectedIf) {
         let selectedRange = this.editor.getSelectionRange();
@@ -481,24 +540,30 @@ class AceEditor {
         } else {
           codeToParse = this.getSelectedCode();
           lineOffset = selectedRange.start.row; // starts at 0 index
+          wholeFileParsed = false;
         }
       } else {
         codeToParse = this.getCode();
       }
       
       //console.log(codeToParse, lineOffset);
-      const parsedCode = esprima.parseModule(codeToParse, { range: false, loc: true, tolerant: true, comment: withComments });  // esprima loc starts at 1 unlike an array
+      // esprima loc starts at 1 unlike an array
+      let parsedCode = esprima.parseModule(codeToParse, { range: true, loc: true, tolerant: true, tokens: true, comment: true });
+      parsedCode = escodegen.attachComments(parsedCode, parsedCode.comments, parsedCode.tokens);
+      //console.log(parsedCode.comments);
 
       if (parsedCode.body && parsedCode.body.length > 0) {
         parsedCode.body.forEach(node => {
           if (node.type.includes("FunctionDeclaration")) {
             // function() { }
-            funcDecls.push({name: node.id.name, loc: node.loc, lineOffset: lineOffset});
+            funcDecls.push({ name: node.id.name, loc: node.loc, lineOffset: lineOffset, 
+                             code: escodegen.generate(node, {comment: withComments}) });
           } else if (node.type === "ExpressionStatement" && 
                      node.expression.type === "AssignmentExpression" &&
                      node.expression.right.type.includes("FunctionExpression")) {
             // obj.prop = function() { }
-            const funcObj = { name: "", loc: node.loc, lineOffset: lineOffset };
+            const funcObj = { name: "", loc: node.loc, lineOffset: lineOffset, 
+                              code: escodegen.generate(node, {comment: withComments}) };
             if (node.expression.left.object) {
               funcObj.name += node.expression.left.object.name;
             }
@@ -510,15 +575,14 @@ class AceEditor {
             // var variable = function () { }
             for (const decl of node.declarations) {
               if (decl.init && decl.init.type.includes("FunctionExpression")) {
-                funcDecls.push({ name: decl.id.name, loc: node.loc, lineOffset: lineOffset });
+                funcDecls.push({ name: decl.id.name, loc: node.loc, lineOffset: lineOffset, 
+                                 code: escodegen.generate(node, {comment: withComments}) });
               }
             }
           }
         });
 
-        if (withComments) {
-          funcDecls = this.mergeComments(funcDecls, parsedCode.comments);
-        }
+        funcDecls = this._mergeHeaderComments(funcDecls, parsedCode.comments, withHeaderComments && !wholeFileParsed);
       } else {
         UIUtils.showAlert("erroralert", "No Functions found.");
         return null;
@@ -533,20 +597,48 @@ class AceEditor {
     return funcDecls;
   }
 
-  mergeComments(funcDecls, comments) {
-    // Realign comments using the lineOffset and then merge them into code or maybe strip code from comments
+  _mergeHeaderComments(funcDecls, comments, withHeaderComments) {
+    // Realign block comments using the lineOffset and then merge them into code or maybe strip comments from code
     //console.log(funcDecls);
     //console.log(comments);
+    if (withHeaderComments) {
+      let lastFunc = null;
+      for (let i=0; i < funcDecls.length; i++) {  // AST nodes are from top to bottom in sequence
+        if (lastFunc) {
+          for (let j=0; j < comments.length; j++) {
+            if (comments[j].loc.start.line >= lastFunc.loc.end.line &&
+                comments[j].loc.end.line <= funcDecls[i].loc.start.line) {
+              funcDecls[i].loc = comments[j].loc;
+              funcDecls[i].lineOffset -= (comments[j].loc.end.line - comments[j].loc.start.line + 1);
+              
+              funcDecls[i].code = this._formatCommentFromASTNode(comments[j]) + funcDecls[i].code;
+              break;
+            }
+          }
+        } else {
+          for (let j=0; j < comments.length; j++) {
+            if (comments[j].loc.end.line <= funcDecls[i].loc.start.line) {
+              funcDecls[i].loc = comments[j].loc;
+              funcDecls[i].lineOffset -= (comments[j].loc.end.line - comments[j].loc.start.line + 1);
+              funcDecls[i].code = this._formatCommentFromASTNode(comments[j]) + funcDecls[i].code;
+              break;
+            }
+          }
+        }
+
+        lastFunc = funcDecls[i];
+      }
+    }
 
     return funcDecls;
   }
 
-  getTopLevelFunctionCode(function_name, withcomments=false) {
-    const funcDecls = this.getTopLevelFunctionsFromCode(false, withcomments);
+  getTopLevelFunctionCode(function_name, withcomments=false, withHeaderComments=false) {
+    const funcDecls = this.getTopLevelFunctionsFromCode(false, withcomments, withHeaderComments);
     if (funcDecls) {
       for (const found_function of funcDecls) {
         if (found_function.name == function_name || found_function.name == "exports."+function_name) {
-          return this.getFunctionCode(found_function);
+          return found_function.code;
         }
       }
     }
