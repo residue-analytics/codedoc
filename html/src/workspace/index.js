@@ -317,10 +317,10 @@ class PageGlobals {
     $('#scrollable-dropdown-menu .typeahead').typeahead({
       hint: true,
       highlight: true,
-      minLength: 1
+      minLength: 3
     }, {
       name: 'File-Paths',
-      limit: 10,
+      limit: 20,
       source: substringMatcher(this.readOnlyEditor.tree.getPathList())
     });
   }
@@ -704,6 +704,10 @@ function formatChatOutputMessage(code="", usr_prmpt="", ai_resp="", error="") {
   return message;
 }
 
+function escapeHtml(unsafe) {
+  return unsafe && unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
 async function setLayout() {
   globals = new PageGlobals();
 
@@ -970,11 +974,13 @@ async function setLayout() {
       if (e.currentTarget.classList.contains('active')) {
         // Button is getting Active, show comments
         let comments = globals.editor.getAllComments();
-        if (comments && comments.length) {
+        if (comments && comments.length > 0) {
           globals.editor.hiddenContent = comments;
           document.getElementById('SaveFile').disabled = true;
           UIUtils.showAlert("erroralert", "Any changes made in the comments will be lost after toggling back to original.");
         } else {
+          let button =  bootstrap.Button.getInstance(e.target);
+          button.toggle(); // Remove the toggle state
           return;
         }
       } else {
@@ -1295,9 +1301,6 @@ async function setLayout() {
 
       const modal = event.target;
       const modalBody = modal.querySelector('.modal-body');
-      const escapeHtml = (unsafe) => {
-        return unsafe && unsafe.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#039;');
-      }
 
       try {
           const contextHistory = await new LLMContextService().getAllContexts();
@@ -1328,7 +1331,8 @@ async function setLayout() {
                 { targets: 0, render: DataTable.render.datetime() },
                 { targets: 1, render: function (data, type, row, meta) { 
                     if (type === 'display') {
-                      return '<p style="white-space: pre-line;">' + data + '</p>';
+                      let instaText = (data != null && data.length > 100) ? data.substr(0, 100) + "..." : data == null?"":data;
+                      return '<p style="white-space: pre-line;" title="' + escapeHtml(data) + '">' + instaText + '</p>';
                     }
                     return data;
                   }
@@ -1454,7 +1458,7 @@ async function setLayout() {
     //document.getElementById("evalinput").addEventListener("click", function(event) { UIUtils.addSpinnerToIconButton("SendFileToLLM");  });
 }
 
-// Function to toggle full-screen mode
+// Function to toggle full-screen mode for textareas
 function toggleFullScreen(textareaID) {
   const textarea = document.getElementById(textareaID);
   if (!document.fullscreenElement) {
@@ -1482,7 +1486,7 @@ function toggleFullScreen(textareaID) {
   }
 }
 
-// Function to exit full-screen mode
+// Function to exit full-screen mode for textareas
 function exitFullScreen() {
   if (document.exitFullscreen) {
     document.exitFullscreen();

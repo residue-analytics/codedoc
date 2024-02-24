@@ -480,12 +480,12 @@ class AceEditor {
   getAllComments() {
     if (!this.curFile) {
       UIUtils.showAlert("erroralert", "No File Loaded in Editor");
-      return;
+      return null;
     }
 
     if (!this.curFile.name.endsWith(".js")) {
       UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
-      return;
+      return null;
     }
 
     let parsedCode = esprima.parseModule(this.getCode(), { loc: true, tolerant: true, comment: true });
@@ -849,7 +849,7 @@ class AceEditorWithMenu extends AceEditor {
       RedoFile: { title: 'Redo the last Undo', icon: 'bi-arrow-clockwise', handler: () => this.redo() },
       Beautify: { title: 'Beautify / Format the code', icon: 'bi-text-indent-left' , handler: () => this.beautify()},
       WordWrap: { title: 'Use Word Wrap', icon: 'bi-text-wrap', toggle: true, handler: () => this.toggleWordWrap() },
-      ToggleFolding: { title: 'Toggle Code Folding', icon: 'bi-arrows-collapse', toggle: true, handler: () => this.toggleCodeFolding() },
+      ToggleFolding: { title: 'Toggle Code Folding', icon: 'bi-arrows-collapse', toggle: false, handler: () => this.toggleCodeFolding() },
       Discard:  { title: 'Reload last version of the file discarding all the unsaved changes', icon: 'bi-file-earmark-arrow-up', handler: () => this.discardChanges() },
       NewFile: { title: 'Create a new file on the server', icon: 'bi-file-earmark-plus', handler: function() {console.log("NewFile")} },
       SaveFile: { title: 'Save the changed file as a new Version on server', icon: 'bi-floppy', handler: null },
