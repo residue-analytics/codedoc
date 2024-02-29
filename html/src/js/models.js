@@ -332,11 +332,12 @@ class LLMContextHistory {
 }
 
 class CodeFile {
-  constructor(name, version = 0, content = null, commit = null) {
+  constructor(name, version = 0, content = null, commit = null, commitDiff = null) {
     this.name = name;
     this.version = version == null ? 0 : version;
     this.content = content;
-    this.commit = commit
+    this.commit = commit;
+    this.commitDiff = commitDiff;
     this.llmParams = null;
   }
 
@@ -345,7 +346,8 @@ class CodeFile {
       name: this.name,
       version: this.version,
       content: this.content,
-      commit: this.commit
+      commit: this.commit,
+      commitDiff: this.commitDiff
     };
   }
 
@@ -354,7 +356,8 @@ class CodeFile {
       json.name,
       json.version,
       json.content,
-      json.commit
+      json.commit,
+      json.commitDiff
     );
   }
 }

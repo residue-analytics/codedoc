@@ -61,6 +61,7 @@ class File(BaseModel):
     version: int | None = None
     content: str | None = None # file content
     commit: str | None = None  # Git Commit Hash
+    commitDiff: List[str] | None = None
 
 class LLMParamsSnap(BaseModel):
     tm: int

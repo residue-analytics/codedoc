@@ -430,6 +430,7 @@ class AceEditor {
     this.setEditMode(this.curFile.name);    
     this.fileCache.put(this.curFile);
     this.codeFolding = false;
+    this.hiddenContent = "";  // hidden content cleared, comments toggling starts picking up old comments
   }
 
   hasCodeFolded() {
@@ -483,21 +484,32 @@ class AceEditor {
       return null;
     }
 
-    if (!this.curFile.name.endsWith(".js")) {
-      UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
-      return null;
-    }
-
-    let parsedCode = esprima.parseModule(this.getCode(), { loc: true, tolerant: true, comment: true });
-    if (parsedCode.comments.length > 0) {
-      let allComments = "";
-      parsedCode.comments.forEach(comment => {
-        allComments += this._formatCommentFromASTNode(comment);
+    if (this.curFile.name.endsWith(".js")) {
+      let parsedCode = esprima.parseModule(this.getCode(), { loc: true, tolerant: true, comment: true });
+      if (parsedCode.comments.length > 0) {
+        let allComments = "";
+        parsedCode.comments.forEach(comment => {
+          allComments += this._formatCommentFromASTNode(comment);
+        });
+  
+        return allComments;
+      } else {
+        UIUtils.showAlert("erroralert", "No Comments found in the code");
+      }
+    } else if (this.curFile.name.endsWith(".ejs")) {
+      const regexp = /<%#.*?%>/g;  // 'some code <%# a comment %> more code <%# another comment %>';
+                                     // ? used for non-greedy matching
+      let comments = [];
+      this.getCode().split("\n").forEach(line => {
+        let cmnt_line = "";
+        line.matchAll(regexp).forEach(mt => cmnt_line += mt[0]);  // matchAll returns an iterator of all results (an [])
+        if (cmnt_line.length) {
+          comments.push(cmnt_line);
+        }
       });
-
-      return allComments;
+      return comments.join("\n");
     } else {
-      UIUtils.showAlert("erroralert", "No Comments found in the code");
+      UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
     }
 
     return null;
@@ -509,14 +521,25 @@ class AceEditor {
       return;
     }
 
-    if (!this.curFile.name.endsWith(".js")) {
+    if (this.curFile.name.endsWith(".js")) {
+      let parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, tokens: true, comment: true });
+      parsedCode = escodegen.attachComments(parsedCode, parsedCode.comments, parsedCode.tokens);
+      
+      return escodegen.generate(parsedCode, {comment: false});
+    } else if (this.curFile.name.endsWith(".ejs")) {
+      const regexp = /<%#.*?%>/g;  // 'some code <%# a comment %> more code <%# another comment %>';
+      // ? used for non-greedy matching
+      let code = [];
+      this.getCode().split("\n").forEach(line => {
+        code.push(line.replaceAll(regexp, ""));  // truncate all comments
+      });
+
+      return code.join("\n");
+    } else {
       UIUtils.showAlert("erroralert", "Cannot parse a non-JS file [" + this.curFile.name + "]");
-      return;
     }
 
-    let parsedCode = esprima.parseModule(this.getCode(), { range: true, loc: true, tolerant: true, tokens: true, comment: true });
-    parsedCode = escodegen.attachComments(parsedCode, parsedCode.comments, parsedCode.tokens);
-    return escodegen.generate(parsedCode, {comment: false});
+    return null;
   }
 
   getTopLevelFunctionsFromCode(useSelectedIf=false, withComments=false, withHeaderComments=false) {  

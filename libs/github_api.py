@@ -51,7 +51,7 @@ class GithubAPI:
     repo = self.git.get_repo(reponame)
     contents = repo.get_contents(filename, branch)
 
-    return contents.decoded_content   # decoded from base64 as bytes b'file contents.....'
+    return contents.decoded_content.decode('utf-8')   # decoded from base64 as bytes b'file contents.....'
 
   def create_new_file(self, reponame: str, filename: str, contents: str | bytes, branch: str, 
     commitmsg: str, committername: str, committeremail: str):
@@ -82,6 +82,7 @@ class GithubAPI:
     try:
       return self.update_file(reponame, filename, new_contents, branch, commitmsg, committername, committeremail)
     except Exception as excp:
+      print(excp)
       if excp.status == 404:
         return self.create_new_file(reponame, filename, new_contents, branch, commitmsg, committername, committeremail)
       else:
@@ -89,6 +90,8 @@ class GithubAPI:
 
   def compare_contents(self, content1: str | bytes, content2: str | bytes):
     # str & bytes, both must be readable content not base64 encoded
+    #print(content1)
+    #print(content2)
     if not isinstance(content1, bytes):
       content1 = content1.encode("utf-8")
 

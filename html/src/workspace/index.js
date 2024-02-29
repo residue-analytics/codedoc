@@ -937,6 +937,10 @@ async function setLayout() {
                 UIUtils.rmSpinnerFromIconButton('SaveFile');
                 codeFile.content = globals.editor.getCode();
                 globals.editor.curFileSavedSuccessfully(codeFile);
+                console.log(codeFile.commit);
+                if (codeFile.commitDiff) {
+                  console.log(codeFile.commitDiff);
+                }
                 UIUtils.showAlert('erroralert', `File [${codeFile.name}] saved with version [${codeFile.version}] and commit [${codeFile.commit}]`);
               })
               .catch((err) => {
