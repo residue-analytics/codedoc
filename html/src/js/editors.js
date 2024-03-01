@@ -531,7 +531,10 @@ class AceEditor {
       // ? used for non-greedy matching
       let code = [];
       this.getCode().split("\n").forEach(line => {
-        code.push(line.replaceAll(regexp, ""));  // truncate all comments
+        const code_line = line.replaceAll(regexp, "");   // truncate all comments
+        if (!/^\s*$/.test(code_line)) {
+          code.push(code_line);
+        }
       });
 
       return code.join("\n");
