@@ -157,6 +157,7 @@ function setLayout() {
       display.replaceChildren();
       display = display.appendChild(document.createElement('pre'));
 
+      let buttonColorSet = false;
       diff.forEach((part) => {
         // green for additions, red for deletions
         // grey for common parts
@@ -164,22 +165,24 @@ function setLayout() {
         if (part.removed) { 
           color = 'red';
         } else if (part.added) {
-          color = 'green';
+          color = 'blue';
         } else {
           color = 'grey';
         }
 
         span = document.createElement('span');
         span.style.color = color;
-        if (color == 'grey') {
+        if (!buttonColorSet && color == 'grey') {
           e.currentTarget.style.color = 'white';
         } else {
+          buttonColorSet = true;
           e.currentTarget.style.color = color;
         }
+
         span.appendChild(document.createTextNode(part.value));
         fragment.appendChild(span);
       });
-      
+
       display.appendChild(fragment);
     } catch (exp) {
       console.log(exp);
