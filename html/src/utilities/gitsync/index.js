@@ -156,14 +156,26 @@ function setLayout() {
       let display = document.getElementById('preContent');
       display.replaceChildren();
       display = display.appendChild(document.createElement('pre'));
-      
+
       diff.forEach((part) => {
         // green for additions, red for deletions
         // grey for common parts
-        const color = part.added ? 'blue' :
-          part.removed ? 'red' : 'grey';
+        let color;
+        if (part.removed) { 
+          color = 'red';
+        } else if (part.added) {
+          color = 'green';
+        } else {
+          color = 'grey';
+        }
+
         span = document.createElement('span');
         span.style.color = color;
+        if (color == 'grey') {
+          e.currentTarget.style.color = 'white';
+        } else {
+          e.currentTarget.style.color = color;
+        }
         span.appendChild(document.createTextNode(part.value));
         fragment.appendChild(span);
       });
