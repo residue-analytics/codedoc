@@ -272,15 +272,20 @@ class AceEditor {
     return this.editor.session.getLength();
   }
 
-  async editFile(filepath, editable=true, showVersion=true) {
+  async editFile(filepath, editable=true, showVersion=true, gitFile=false) {
     this._fileLockedChk();
 
     let file = null;
     if (this.curFile == null) {
       try {
-        file = await new FilesService().getFileContent(filepath, editable);
+        if (gitFile) {
+          file = await new FilesService().getGitFileContent(filepath);
+        } else {
+          file = await new FilesService().getFileContent(filepath, editable);
+        }
+        
       } catch (err) {
-        if (err.code == 404 && editable) {
+        if (err.code == 404 && editable) {  // Git does not care about editable or not, so file not found is an error no fallback
           file = await new FilesService().getFileContent(filepath, false);  // Get the original file
         } else {
           UIUtils.showAlert("erroralert", err);
@@ -310,7 +315,7 @@ class AceEditor {
         this.curFile = null;
         this.codeFolding = false;
       }
-      await this.editFile(filepath, editable, showVersion);  // We don't have any file now, call myself again
+      await this.editFile(filepath, editable, showVersion, gitFile);  // We don't have any file now, call myself again
     }
   }
 
@@ -735,7 +740,14 @@ class TreeView {
   }
 
   setupSelectListener(callback) {
-    this.tree.on('select', e => callback(this.tree.getPath(e), e.dataset.type ? e.dataset.type : Tree.FOLDER));
+      this.tree.on('select', e => { 
+        try {
+          callback && callback(this.tree.getPath(e), e.dataset.type ? e.dataset.type : Tree.FOLDER);
+        } catch (exp) {
+          console.log(exp);
+          console.log(callback);
+        }
+      });
   }
 
   getPath(element) {
@@ -805,12 +817,12 @@ class AceEditorWithTree extends AceEditor {
     }
   }
 
-  initialize(fileList, selectActionCB=null) {
+  initialize(fileList, selectActionCB=null, gitFile=false) {
     if (!selectActionCB) {
       selectActionCB = (filepath, type) => {
         if (type == AceEditorWithTree.FILE) {
           //console.log("Editable [" + this.editableFiles + "] File set from TreeEditor [" + filepath + "]");
-          this.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
+          this.editFile(filepath, this.editableFiles, false, gitFile); // Editable files with no version alert
         }
       };
     }
@@ -884,16 +896,24 @@ class AceEditorWithMenu extends AceEditor {
       fileLock: { title: 'Keep the file in this Editor', icon: 'bi-file-lock', toggle: true, handler: () => this.toggleFileLocked() },
       readOnly: { title: 'Toggle Read Only Mode', icon: 'bi-book', toggle: true, handler: () => this.toggleReadOnly() },
       empty: { title: 'Truncate Content / File', icon: 'bi-x', handler: () => this.setText("") },
-      memorize: { title: 'Add the highlighted Text to Memory', icon: 'bi-cart-plus', toggle: false, handler: null }
+      memorize: { title: 'Add the highlighted Text to Memory', icon: 'bi-cart-plus', toggle: false, handler: null },
+      filename: { title: 'No File in Editor', icon: 'bi-question', type: 'info', toggle: false, handler: (e) => {
+        if (this.getFilename() && this.getFilename().length) {
+          e.target.setAttribute('title', this.getFilename() + " Ver: " + this.getFileVersion());
+        } else {
+          e.target.setAttribute('title', "No File in Editor");
+        }
+      }},
     };
   
     // Create and append buttons to the group
     if (options.buttons) {
       Object.entries(options.buttons).forEach( ([key, value]) => {
         if (typeof(value) == 'boolean') {
-          value && btnGroup.appendChild(this.createButton(baseKey, key, buttonDefs[key].title, buttonDefs[key].icon, buttonDefs[key].toggle, buttonDefs[key].handler));
+          value && btnGroup.appendChild(this.createButton(baseKey, key, buttonDefs[key].title, buttonDefs[key].icon, 
+            buttonDefs[key].toggle, buttonDefs[key].handler, buttonDefs[key].type));
         } else {
-          btnGroup.appendChild(this.createButton(baseKey, key, value.title, value.icon, value.toggle, value.handler));
+          btnGroup.appendChild(this.createButton(baseKey, key, value.title, value.icon, value.toggle, value.handler, value.type));
         }
       });
     }
@@ -903,7 +923,7 @@ class AceEditorWithMenu extends AceEditor {
   }
 
   // Helper function to create a button
-  createButton(baseKey, idSuffix, title, iconClass, toggle, handler) {
+  createButton(baseKey, idSuffix, title, iconClass, toggle, handler, type) {
     const button = document.createElement('button');
     button.id = `${baseKey}_${idSuffix}`;
     button.type = 'button';
@@ -913,12 +933,34 @@ class AceEditorWithMenu extends AceEditor {
       button.setAttribute('data-bs-toggle', 'button');
     }
     if (handler) {
-      button.addEventListener('click', handler);
+      if (type && type == 'info') {
+        button.addEventListener('mouseover', handler);  
+      } else {
+        button.addEventListener('click', handler);
+      }
     }
     const icon = document.createElement('span');
     icon.className = `bi ${iconClass}`;
     button.appendChild(icon);
     return button;
+  }
+
+  _overrideToolbarHandler(baseKey, idSuffix, handler, type) {
+    const button = document.getElementById(`${baseKey}_${idSuffix}`);
+    if (type && type == 'info') {
+      button.onmouseover = handler;
+    } else {
+      button.onclick = handler;
+    }
+  }
+
+  _addToolbarHandler(baseKey, idSuffix, handler, type) {
+    const button = document.getElementById(`${baseKey}_${idSuffix}`);
+    if (type && type == 'info') {
+      button.addEventListener('mouseover', handler);
+    } else {
+      button.addEventListener('click', handler);
+    }
   }
 
   static createEditorWithDynamicIds(baseKey, parent, options) {
@@ -975,6 +1017,8 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
     this.setReadOnly(!this.editableFiles);
     this.treeCallback = null;
     this.filelist = null;
+
+    this.setupToggleTree(menuOptions);
   }
 
   destroy() {  // TODO: Remove the Event Listeners on the parent
@@ -985,17 +1029,17 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
     }
   }
 
-  initialize(fileList, selectActionCB=null) {
+  initialize(fileList, selectActionCB=null, gitFile=false) {
     if (!selectActionCB) {
       selectActionCB = (filepath, type) => {
         if (type == AceEditorWithMenuTree.FILE) {
           //console.log("Editable [" + this.editableFiles + "] File set from TreeEditor [" + filepath + "]");
-          this.editFile(filepath, this.editableFiles, false); // Editable files with no version alert
+          this.editFile(filepath, this.editableFiles, false, gitFile); // Editable files with no version alert
         }
       };
     }
 
-    this.tree.initialize(fileList, selectActionCB);
+    this.tree.initialize(fileList, selectActionCB, gitFile);
   }
 
   removeCurActive() {
@@ -1020,6 +1064,19 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
 
   showFile(filepath) {
     this.tree.browseToFile(filepath);
+  }
+
+  setupToggleTree(options) {
+    if (options.buttons && options.buttons.ToggleTree && typeof(options.buttons.ToggleTree) == 'boolean') {
+      this._overrideToolbarHandler(this.baseKey, 'ToggleTree', () => {
+        let dirTree = document.getElementById(this.treeID);
+        if (dirTree.classList.contains('treeCollapsed')) {
+          dirTree.classList.remove('treeCollapsed');
+        } else {
+          dirTree.classList.add('treeCollapsed');
+        }
+      }, null);
+    }
   }
 }
 

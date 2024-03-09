@@ -159,6 +159,29 @@ class FilesService {
     }
   }
 
+  async getGitFiles() {
+    const response = await new FetchAPI().get('/gitfiles/');
+    if (response.dirname == "/") {
+      return response.files;
+    } else {
+      throw new Error(`Unable to fetch Directory Listing from Git`);
+    }
+  }
+  
+  async getGitFileContent(filepath) {
+    if (!filepath || filepath.length == 0) {
+      throw new Error("Cannot get file content without filename.");
+    }
+
+    const response = await new FetchAPI().get('/gitfiles/' + filepath);
+    if (filepath && response.name == filepath) {
+      return CodeFile.fromJSON(response);
+    } else {
+      console.log(response);
+      throw new Error(`Unable to fetch File [${filepath}]`);
+    }
+  }
+
   async saveFile(codeFile) {
     if (!codeFile || codeFile.content == null) {
       throw new Error(`Cannot save file [${codeFile.name}] without content.`);

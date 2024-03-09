@@ -1,0 +1,43 @@
+
+<div id="MainDiv" class="container-fluid">
+  <div class="row row-cols-1 row-cols-lg-2 justify-content-left align-items-top">
+    <div class="col-6">
+      <div class="row app-editor">
+        <div id="gitTree" class="col-4 border dirtree" style="height: 404px;">
+        </div>
+        <div id="gitEditor" class="col p-0 mb-3" style="height: 404px;">
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6">
+      <div class="row app-editor">
+        <div id="outputTree" class="col-4 border dirtree" style="height: 404px;">
+        </div>
+        <div id="outputEditor" class="col p-0 mb-3" style="height: 404px;">
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="NewFilenameModal" tabindex="-1" class="modal fade">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Full Path & Name of the New File?</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <textarea class="form-control" id="NewFilenameModalText" rows="3"></textarea>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!--build:js(src) utilities/gitsync/index.js type="module"-->
+<script src="utilities/gitsync/index.js" type="module"></script>
+<!-- endbuild -->

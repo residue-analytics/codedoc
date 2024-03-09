@@ -133,7 +133,7 @@ def get_gitdirlist(current_user: Annotated[User, Depends(get_current_active_user
         raise HTTPException(status_code=404, detail={'msg': 'No Git Repository configured'})
 
     try:
-        files_path = githubAPI.get_full_dirtree(reponame, repobranch)
+        files_paths = githubAPI.get_full_dirtree(reponame, repobranch)
         return {'dirname': "/", 'files': os_sorted(files_paths)}
     except Exception as excp:
         raise HTTPException(status_code=excp.status, detail={'msg': excp.message})

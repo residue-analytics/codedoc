@@ -20,6 +20,10 @@ var routes = [
     renderURL("utilities/playground");
     activateNavLink(match.url);
   }],
+  ["utils/gitsync", (match) => {
+    renderURL("utilities/gitsync");
+    activateNavLink(match.url);
+  }],
   ["workspace", (match) => {
     renderURL("workspace");
     activateNavLink(match.url);

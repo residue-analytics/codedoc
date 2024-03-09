@@ -924,6 +924,7 @@ async function setLayout() {
         globals.editor.setNewFile(new CodeFile(filename, 0, ""));  // Set new CodeFile in the Editor, don't save yet
       } catch (err) {
         UIUtils.showAlert("erroralert", err);
+        return;
       }
 
       UIUtils.showAlert("erroralert", `Update the contents of [${filename}] and then save to create the first version.`);

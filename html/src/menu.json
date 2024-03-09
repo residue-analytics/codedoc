@@ -1,7 +1,7 @@
 {
     "auth" : {
         "hash" : [
-            "home", "utils/chat", "utils/playground", "workspace", "about", "terms",
+            "home", "utils/chat", "utils/playground", "utils/gitsync", "workspace", "about", "terms",
 			"disclaimer", "privacy", "diagrams/class", "diagrams/sequence", "diagrams/dataflow",  
 			"agent/config", "agent/control", "agent/batch", "cleanup", "api", "logout"
         ],
