@@ -19,6 +19,22 @@
       </div>
     </div>
   </div>
+
+  <div class="row justify-content-center align-items-center">
+    <button id="showDiff" type="button" class="btn btn-primary btn-sm col-1 me-2"
+      title="Shows diff between the contents of the 2 editors">
+      Diff
+    </button>
+    <button id="watchMarkdown" type="button" class="btn btn-primary btn-sm col-1"
+      title="Parse and interpret the contents of the Server-side editor as Markdown">
+      Markdown
+    </button>
+  </div>
+
+  <div class="row justify-content-center align-items-top" style="min-height: 400px">
+    <div id="preContent" class="col-8">
+    </div>
+  </div>
 </div>
 
 <div id="NewFilenameModal" tabindex="-1" class="modal fade">
@@ -37,6 +53,8 @@
     </div>
   </div>
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.2.0/diff.min.js"></script>
 
 <!--build:js(src) utilities/gitsync/index.js type="module"-->
 <script src="utilities/gitsync/index.js" type="module"></script>

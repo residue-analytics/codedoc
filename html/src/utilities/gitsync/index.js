@@ -3,6 +3,8 @@ import { AppGlobals, UIUtils } from "../../js/utils.js";
 import { FetchAPI, FilesService } from "../../js/services.js";
 import { CodeFile } from "../../js/models.js";
 
+import markdownIt from 'https://cdn.jsdelivr.net/npm/markdown-it@14.0.0/+esm';
+
 class PageGlobals {
   constructor() {
     this.gitEditor = null;
@@ -138,6 +140,51 @@ function setLayout() {
     }
 
     UIUtils.showAlert("erroralert", `Update the contents of [${filename}] and then save to create the first version.`);
+  });
+
+  document.getElementById("showDiff").addEventListener("click", (e) => {
+    e.preventDefault();
+    try {
+      const git = globals.gitEditor.getCode();
+      const out = globals.outputEditor.getCode();
+
+      let span = null;
+
+      const diff = Diff.diffChars(git, out),
+          fragment = document.createDocumentFragment();
+      
+      let display = document.getElementById('preContent');
+      display.replaceChildren();
+      display = display.appendChild(document.createElement('pre'));
+      
+      diff.forEach((part) => {
+        // green for additions, red for deletions
+        // grey for common parts
+        const color = part.added ? 'blue' :
+          part.removed ? 'red' : 'grey';
+        span = document.createElement('span');
+        span.style.color = color;
+        span.appendChild(document.createTextNode(part.value));
+        fragment.appendChild(span);
+      });
+      
+      display.appendChild(fragment);
+    } catch (exp) {
+      console.log(exp);
+      UIUtils.showAlert("erroralert", exp);
+    }
+  });
+
+  document.getElementById('watchMarkdown').addEventListener("click", (e) => {
+    e.preventDefault();
+    //if (e.currentTarget.checked) {
+      const md = new markdownIt();
+      const display = document.getElementById('preContent');
+      display.replaceChildren();
+      display.innerHTML = md.render(globals.outputEditor.getCode());
+    //} else {
+    //  console.log("check off");
+    //}
   });
 }
 
