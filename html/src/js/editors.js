@@ -880,9 +880,27 @@ class AceEditorWithMenu extends AceEditor {
     btnGroup.setAttribute('role', 'group');
 
     // Button definitions
-    const buttonDefs = {
-      ToggleTree: { title: "Show/Hide Directory Tree", icon: 'bi bi-arrow-left-right', handler: function() {console.log("TreeToggling!!")} },
-      SwitchTree: { title: "Switch Read/Write Directory Trees", icon: 'bi bi-signpost-split', handler: function() {console.log("Switching Tree")} },
+    const buttonDefs = this._getButtonDefs();
+  
+    // Create and append buttons to the group
+    if (options.buttons) {
+      Object.entries(options.buttons).forEach( ([key, value]) => {
+        if (typeof(value) == 'boolean') {
+          value && btnGroup.appendChild(this.createButton(baseKey, key, buttonDefs[key].title, buttonDefs[key].icon, 
+            buttonDefs[key].toggle, buttonDefs[key].handler, buttonDefs[key].type));
+        } else {
+          btnGroup.appendChild(this.createButton(baseKey, key, value.title, value.icon, value.toggle, value.handler, value.type));
+        }
+      });
+    }
+  
+    // Append the button group to the toolbar
+    toolbar.appendChild(btnGroup);
+  }
+
+  _getButtonDefs() {
+    // Button definitions
+    return {
       UndoFile: { title: 'Undo the last change', icon: 'bi-arrow-counterclockwise', handler: () => this.undo() },
       RedoFile: { title: 'Redo the last Undo', icon: 'bi-arrow-clockwise', handler: () => this.redo() },
       Beautify: { title: 'Beautify / Format the code', icon: 'bi-text-indent-left' , handler: () => this.beautify()},
@@ -904,22 +922,7 @@ class AceEditorWithMenu extends AceEditor {
           e.target.setAttribute('title', "No File in Editor");
         }
       }},
-    };
-  
-    // Create and append buttons to the group
-    if (options.buttons) {
-      Object.entries(options.buttons).forEach( ([key, value]) => {
-        if (typeof(value) == 'boolean') {
-          value && btnGroup.appendChild(this.createButton(baseKey, key, buttonDefs[key].title, buttonDefs[key].icon, 
-            buttonDefs[key].toggle, buttonDefs[key].handler, buttonDefs[key].type));
-        } else {
-          btnGroup.appendChild(this.createButton(baseKey, key, value.title, value.icon, value.toggle, value.handler, value.type));
-        }
-      });
-    }
-  
-    // Append the button group to the toolbar
-    toolbar.appendChild(btnGroup);
+    };    
   }
 
   // Helper function to create a button
@@ -1018,7 +1021,7 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
     this.treeCallback = null;
     this.filelist = null;
 
-    this.setupToggleTree(menuOptions);
+    //this.setupToggleTree(menuOptions);
   }
 
   destroy() {  // TODO: Remove the Event Listeners on the parent
@@ -1057,6 +1060,15 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
     this.setupSelectListener(this.treeCallback);
   }
 
+  toggleTreeVisibility() {
+    let dirTree = document.getElementById(this.treeID);
+    if (dirTree.classList.contains('treeCollapsed')) {
+      dirTree.classList.remove('treeCollapsed');
+    } else {
+      dirTree.classList.add('treeCollapsed');
+    }
+  }
+
   setupSelectListener(callback) {
     this.treeCallback = callback;
     this.tree.setupSelectListener(callback);
@@ -1066,16 +1078,23 @@ class AceEditorWithMenuTree extends AceEditorWithMenu {
     this.tree.browseToFile(filepath);
   }
 
+  _getButtonDefs() {
+    const defs = super._getButtonDefs();
+
+    const treeDefs = {
+      ToggleTree: { title: "Show/Hide Directory Tree", icon: 'bi bi-arrow-left-right', handler: () => this.toggleTreeVisibility() },
+      SwitchTree: { title: "Switch Read/Write Directory Trees", icon: 'bi bi-signpost-split', handler: function() {console.log("Switching Tree")} },
+    };
+
+    defs.ToggleTree = treeDefs.ToggleTree;
+    defs.SwitchTree = treeDefs.SwitchTree;
+
+    return defs;
+  }
+
   setupToggleTree(options) {
     if (options.buttons && options.buttons.ToggleTree && typeof(options.buttons.ToggleTree) == 'boolean') {
-      this._overrideToolbarHandler(this.baseKey, 'ToggleTree', () => {
-        let dirTree = document.getElementById(this.treeID);
-        if (dirTree.classList.contains('treeCollapsed')) {
-          dirTree.classList.remove('treeCollapsed');
-        } else {
-          dirTree.classList.add('treeCollapsed');
-        }
-      }, null);
+      this._overrideToolbarHandler(this.baseKey, 'ToggleTree', () => this.toggleTreeVisibility(), null);
     }
   }
 }

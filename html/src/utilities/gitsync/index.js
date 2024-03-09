@@ -20,6 +20,8 @@ class PageGlobals {
   }
 
   async setEditors(gitTreeID, gitCodeID, opTreeID, opCodeID) {
+    AppGlobals.instance.startProgress();
+
     this.gitEditor = new AceEditorWithMenuTree(gitTreeID, gitCodeID, null, false, {  // Not editable files
       text: 'Select a file from the github dir tree on the left',
       buttons: {
@@ -30,6 +32,7 @@ class PageGlobals {
         filename: true,
       }
     });
+    AppGlobals.instance.incrProgress(10);
 
     this.outputEditor = new AceEditorWithMenuTree(opTreeID, opCodeID, null, true, {
       text: 'Select a file from the server dir tree on the left',
@@ -71,9 +74,14 @@ class PageGlobals {
         filename: true,
       }
     });
-    
-    this.loadGitEditor();
+    AppGlobals.instance.incrProgress(10);
+
     await this.loadOutputEditor();
+    AppGlobals.instance.setProgress(50);
+
+    await this.loadGitEditor();
+    AppGlobals.instance.setProgress(100);
+    AppGlobals.instance.setProgress(0);
   }
 
   async loadGitEditor(reload=false) {
@@ -84,6 +92,7 @@ class PageGlobals {
               if (reload) {
                 this.gitEditor.reloadTree(fileList);
               } else {
+                AppGlobals.instance.incrProgress(20);
                 this.gitEditor.initialize(fileList, null, true);  // fetching files from Git!!
               }
           }

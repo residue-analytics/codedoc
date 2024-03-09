@@ -187,21 +187,21 @@ class AppGlobals {
   }
 
   startProgress() {
-    globalProgress.pctValue = 0;
+    globalProgress.style.width = 0 + "%";
   }
 
   incrProgress(value, max = 100) {
-    let cur = globalProgress.pctValue;
+    let cur = globalProgress.style.width.replace('%', '');
     if (cur >= 100) {
       // We are already at full, we restart from 0 in place of incrementing it
       this.setProgress(value, max);
     } else {
-      globalProgress.pctValue = cur + ((value / max) * 100) | 0;
+      globalProgress.style.width = (cur + ((value / max) * 100) | 0) + '%';
     }
   }
 
   setProgress(value, max = 100) {
-    globalProgress.pctValue = ((value / max) * 100) | 0;  // bitwise OR to truncate the float
+    globalProgress.style.width = (((value / max) * 100) | 0) + '%';  // bitwise OR to truncate the float
   }
 
   get errorAlertNodeID() {
