@@ -249,9 +249,21 @@ class LLMParamsUI {
   }
 
   addToContextParam(text) {
-    if (text && text.length) {
-      this.ctxParam.enabled() ? this.ctxParam.addToValue(text + "\n") : null;
+    if (this.isLocked()) {
+      throw new Error("Params are Locked");
     }
+
+    if (text && text.length) {
+      this.ctxParam.enabled() ? this.ctxParam.addToValue("\n" + text + "\n") : null;
+    }
+  }
+
+  setContextParam(text) {
+    if (this.isLocked()) {
+      throw new Error("Params are Locked");
+    }
+
+    this.ctxParam.enabled() ? this.ctxParam.setValue(text) : null;
   }
 }
 
@@ -267,7 +279,9 @@ class PageGlobals {
     this.chatMode = false;
     this.chatHistory = null;
     this.lastSentParams = null;
+    this.curSessionPos = -1;
     this.resetChatHistory();
+    this.updateSessionNavButtons();
   }
 
   destroy() {
@@ -598,7 +612,7 @@ class PageGlobals {
   }
 
   async restoreLLMParamsFromSession(modelCode=null) {
-    console.log("restoreLLMParamsFromSession");
+    console.log("restoreLLMParamsFromSession not used anymore!!");
 
     let params = null;
 
@@ -638,7 +652,48 @@ class PageGlobals {
   }
 
   saveLastSentParams(params) {
-    globals.lastSentParams = LLMParams.fromJSON(params.toJSON());
+    this.lastSentParams = LLMParams.fromJSON(params.toJSON());
+    AppGlobals.instance.history.add(params);
+    this.curSessionPos = -2;  // Stay one param back, the latest sent is already loaded so no need to reload the same one?
+    this.updateSessionNavButtons();
+  }
+
+  updateSessionNavButtons() {
+    const pbtn = document.getElementById('previousParamSession');
+    const nbtn = document.getElementById('nextParamSession');
+
+    const histCount = AppGlobals.instance.history.countParams();
+    if (histCount == 0) {
+      pbtn.disabled = true;
+      nbtn.disabled = true;
+    } else if (this.curSessionPos == -1) {
+      pbtn.disabled = false;
+      nbtn.disabled = true;
+    } else if (this.curSessionPos < -histCount) {
+      pbtn.disabled = true;
+      nbtn.disabled = false;
+    } else {
+      pbtn.disabled = false;
+      nbtn.disabled = false;
+    }
+  }
+
+  loadPreviousLLMParams() {
+    let obj = AppGlobals.instance.history.getParamsAtIdx(this.curSessionPos);
+    console.log(obj.timestamp);
+    this.llmParamsUI.updateLLMParams(obj.payload);
+    this.llmParamsUI.setContextParam(obj.payload.context);
+    this.curSessionPos -= 1;
+    this.updateSessionNavButtons();
+  }
+
+  loadNextLLMParams() {
+    let obj = AppGlobals.instance.history.getParamsAtIdx(this.curSessionPos + 1);
+    console.log(obj.timestamp);
+    this.llmParamsUI.updateLLMParams(obj.payload);
+    this.llmParamsUI.setContextParam(obj.payload.context);
+    this.curSessionPos += 1;
+    this.updateSessionNavButtons();
   }
 }
 
@@ -804,6 +859,14 @@ async function setLayout() {
 
     document.getElementById('ShowParamsHistory').addEventListener('click', function () {
         globals.showLLMParamsHistory();
+    });
+
+    document.getElementById('previousParamSession').addEventListener('click', function () {
+      globals.loadPreviousLLMParams();
+    });
+
+    document.getElementById('nextParamSession').addEventListener('click', function () {
+      globals.loadNextLLMParams();
     });
 
     // Commented out as we don't want the params to change when model is changed. 
@@ -1035,6 +1098,8 @@ async function setLayout() {
           // Save the first chat message as last sent params
           if (globals.chatHistory.chatMsg.count() == 0) {
             globals.saveLastSentParams(params);
+          } else {
+            AppGlobals.instance.history.add(params);
           }
 
           globals.chatHistory.chatMsg.params = params;
@@ -1085,6 +1150,8 @@ async function setLayout() {
           // Save the first chat message as last sent params
           if (globals.chatHistory.chatMsg.count() == 0) {
             globals.saveLastSentParams(params);
+          } else {
+            AppGlobals.instance.history.add(params);
           }
 
           let prompt = globals.editor.getCode() + "\n" + params.user_prompt;
@@ -1214,6 +1281,8 @@ async function setLayout() {
           // Save the first chat message as last sent params
           if (globals.chatHistory.chatMsg.count() == 0) {
             globals.saveLastSentParams(params);
+          } else {
+            AppGlobals.instance.history.add(params);
           }
 
           let prompt = params.code_snippet + "\n" + params.user_prompt;
@@ -1391,7 +1460,7 @@ async function setLayout() {
                     e.preventDefault();
                     try {
                       let data = dt.row({ selected: true }).data();
-                      globals.llmParamsUI.ctxParam.setValue(data.context);
+                      globals.llmParamsUI.setContextParam(data.context);
                       UIUtils.showAlert('erroralert', "Loaded " + data.user + "'s Context");
                       const purpModal = bootstrap.Modal.getInstance("#ContextListModal");
                       purpModal && purpModal.hide();
@@ -1415,7 +1484,7 @@ async function setLayout() {
           console.log(err);
           UIUtils.showAlert('erroralert', err);
       }
-  });
+    });
 
     document.getElementById('EnableChatMode').addEventListener('click', function () {
       if (this.checked) {

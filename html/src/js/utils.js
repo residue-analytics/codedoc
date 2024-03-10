@@ -1,4 +1,5 @@
 import { LoginService } from "./services.js";
+import { CodeFile, LLMParams, ChatMessage } from "./models.js";
 
 class UIUtils {
   static showAlert(alertNodeID, message, durSecs = 5) {
@@ -155,6 +156,99 @@ class UsersManager {
   }
 }
 
+class SessionHistory {
+  constructor() {
+    this.history = {
+      chatHistory: [],          // {timestamp, ChatMessage} object as sent to server
+      paramsHistory: [],        // {timestamp, LLMParams} objects as sent (incl code_snippet)
+      readOnlyHistory: [],      // {timestamp, CodeFile} objects from the Read Only Editor
+      outputEditorHistory: [],  // {timestamp, CodeFile} objects from the Output  Editor
+      gitEditorHistory: [],     // {timestamp, CodeFile} objects from the Git  Editor
+    }
+
+    this.load();
+  }
+
+  save() {
+    localStorage.setItem("codedoc.session", JSON.stringify(this.history));
+  }
+
+  load() {
+    let obj = localStorage.getItem("codedoc.session");
+    if (obj) {
+      obj = JSON.parse(obj);
+      this.history = obj;
+    }
+  }
+
+  countParams() {
+    return this.history.paramsHistory.length;
+  }
+
+  static RO = "RO";
+  static OP = "OP";
+  static GIT = "GIT";
+  addFile(from, codeFile) {  // "RO", "OP", "GIT"
+    switch (from) {
+      case RO:  this._append(this.history.readOnlyHistory, codeFile.toJSON());
+      case OP:  this._append(this.history.outputEditorHistory, codeFile.toJSON());
+      case GIT: this._append(this.history.gitEditorHistory, codeFile.toJSON());
+    }
+  }
+
+  add(obj) {
+    if (obj instanceof LLMParams) {
+      this._append(this.history.paramsHistory, obj.toJSON());
+    } else if (obj instanceof ChatMessage) {
+      this._append(this.history.chatHistory, obj.toJSON());
+    } else {
+      console.log("Unknown object for session history.");
+      console.log(obj);
+    }
+  }
+
+  _append(target, objStr) {
+    //target.push( { timestamp: Date.now(), payload: LZString.compressToUTF16(objStr) } );
+    target.push( { timestamp: Date.now(), payload: objStr } );
+    this.save();
+  }
+
+  _getIdx(target, idx) {
+    const obj = target.at(idx);
+
+    //return { timestamp: obj.timestamp, payload: LZString.decompressFromUTF16(obj.payload) };
+    return { timestamp: obj.timestamp, payload: obj.payload };
+  }
+
+  getFileAtIdx(from, idx) {
+    let target = null;
+    switch (from) {
+      case RO:  target = this.history.readOnlyHistory;
+      case OP:  target = this.history.outputEditorHistory;
+      case GIT: target = this.history.gitEditorHistory;
+    }
+
+    let obj = this._getIdx(target, idx);
+    obj.payload = CodeFile.fromJSON(obj.payload);
+
+    return obj;
+  }
+
+  getParamsAtIdx(idx) {
+    let obj = this._getIdx(this.history.paramsHistory, idx);
+    obj.payload = LLMParams.fromJSON(obj.payload);
+
+    return obj;
+  }
+
+  getChatAtIdx(idx) {
+    let obj = this._getIdx(this.history.chatHistory, idx);
+    obj.payload = ChatMessage.fromJSON(obj.payload);
+
+    return obj;
+  }
+}
+
 class AppGlobals {
   static instance = new this();
 
@@ -162,6 +256,7 @@ class AppGlobals {
     this.router = null;
     this._errNodeID = null;
     this._pageDestroy = null;
+    this.history = new SessionHistory();
   }
 
   clearStorage() {
