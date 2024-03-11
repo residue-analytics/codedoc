@@ -165,12 +165,18 @@ class SessionHistory {
       outputEditorHistory: [],  // {timestamp, CodeFile} objects from the Output  Editor
       gitEditorHistory: [],     // {timestamp, CodeFile} objects from the Git  Editor
     }
-
+    this.limitON = false;
+    this.maxLen = 0;
     this.load();
   }
 
   save() {
-    localStorage.setItem("codedoc.session", JSON.stringify(this.history));
+    const data = JSON.stringify(this.history);
+    if (!this.limitON && data.length >= 2000000) {      // 2 MB limit
+      this.limitON = true;
+      this.maxLen = this.history.paramsHistory.length;  // As pramas and chats are the largest objects
+    }
+    localStorage.setItem("codedoc.session", data);
   }
 
   load() {
@@ -209,6 +215,12 @@ class SessionHistory {
 
   _append(target, objStr) {
     //target.push( { timestamp: Date.now(), payload: LZString.compressToUTF16(objStr) } );
+    if (this.limitON) {
+      if (target.length >= this.maxLen ) {  // Just make space for 1 object, don't do a truncate till masLen
+        target.shift();
+      }
+    }
+    
     target.push( { timestamp: Date.now(), payload: objStr } );
     this.save();
   }
