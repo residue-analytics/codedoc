@@ -47,6 +47,7 @@ class LLMParams(BaseModel):
     context: str | None = None
     code_snippet: str | None = None
     user_prompt: str
+    snap_id: str | None = None
 
 class ChatExchange(BaseModel):
     user: str
@@ -64,10 +65,10 @@ class File(BaseModel):
     commitDiff: List[str] | None = None
 
 class LLMParamsSnap(BaseModel):
-    tm: int
+    tm: int | None = None
     user: str
     purpose: str
-    hash: str
+    hash: str | None = None
     params: LLMParams
 
 class LLMContextSnap(BaseModel):

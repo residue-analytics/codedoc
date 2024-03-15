@@ -243,10 +243,15 @@ def get_params(llmID:str, current_user: Annotated[User, Depends(get_current_acti
 def save_params(llmID: str, paramsnp: LLMParamsSnap, 
               current_user: Annotated[User, Depends(get_current_active_user)]) -> dict:
     params_db = ParamsDatabase(sqlite_dbname)
-    params_db.add_params_by_username(user_db.LLMParamsRec(llmID, None, int(datetime.now().timestamp()*1000), 
-                                                       paramsnp.purpose, paramsnp.params.model_dump_json(), None,
-                                                       ParamsType.LLM_PARAMS), 
-                                                       current_user.username)
+    params_rec = user_db.LLMParamsRec(llmID, None, paramsnp.tm, 
+                                      paramsnp.purpose, paramsnp.params.model_dump_json(), paramsnp.hash,
+                                      ParamsType.LLM_PARAMS)
+    if paramsnp.hash is None or len(paramsnp.hash) == 0:
+        params_rec.tm = int(datetime.now().timestamp()*1000)
+        params_db.add_params_by_username(params_rec, current_user.username)
+    else:
+        params_db.update_params_by_username(params_rec, current_user.username)
+    
     count = params_db.get_count_by_name(current_user.username, llmID)
     return {'llmID': llmID, 'count': count }
 

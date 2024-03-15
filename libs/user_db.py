@@ -6,6 +6,7 @@ __author__  = "Shalin Garg"
 import sqlite3 
 import hashlib
 from enum import StrEnum
+from datetime import datetime
 
 __all__ = ['User', 'UserCredentials', 'UserDatabase', 'ParamsType', 'ParamsDatabase']
 
@@ -193,6 +194,9 @@ class ParamsDatabase:
         self.cursor = self.conn.cursor() 
         self.create_tables()
     
+    # Hash of Data may not always match hash value in the table, due to update params feature which does not
+    #   update the hash value when data changes, it keeps reusing the same hash as if hash is just a unique 
+    #   key for the record
     def create_tables(self):
         self.cursor.execute('''
             CREATE TABLE IF NOT EXISTS params (
@@ -248,6 +252,8 @@ class ParamsDatabase:
                             (params.tm, params.rectype, params.user_id, params.name, 
                              params.purpose, params.data, hash_data))
             self.conn.commit()
+        else:
+            raise ValueError(f"Cannot add New, Params already exists [{hash_data}]")
 
     def add_params_by_username(self, params, username):
         users_db = UserDatabase(self.db_name)
@@ -255,6 +261,23 @@ class ParamsDatabase:
         if user_id:
             params.user_id = user_id
             self.add_params(params)
+        else:
+            raise ValueError(f"No user found with name [{username}]")
+
+    def update_params(self, params):
+        if self.check_hash_exists(params.user_id, params.data_hash):
+            self.cursor.execute("UPDATE params SET tm = ?, name = ?, purpose = ?, data = ? WHERE user_id = ? AND hash = ?", 
+                    (int(datetime.now().timestamp()*1000), params.name, params.purpose, params.data, params.user_id, params.data_hash))
+            self.conn.commit()
+        else:
+            raise ValueError(f"Cannot Update, Params does not exist [{params.data_hash}]")
+        
+    def update_params_by_username(self, params, username):
+        users_db = UserDatabase(self.db_name)
+        user_id = users_db.get_user_id_by_username(username)
+        if user_id:
+            params.user_id = user_id
+            self.update_params(params)
         else:
             raise ValueError(f"No user found with name [{username}]")
 
