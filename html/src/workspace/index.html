@@ -32,6 +32,10 @@
                       title="Toggle Code Folding">
                       <span class="bi bi-arrows-collapse"></span>
                     </button>
+                    <button id="UploadFile" type="button" class="btn btn-sm text-light"
+                      title="Upload Files">
+                      <span class="bi bi-file-earmark-arrow-up"></span>
+                    </button>
                   </div>
                   <div class="btn-group" role="group">
                     <button id="ROCurrentFilename" type="button" class="btn btn-sm text-light" title="Currently showing filename: [none]">
@@ -464,7 +468,7 @@
     <div id="ContextListModal" tabindex="-1" class="modal fade">
       <div class="modal-dialog modal-fullscreen modal-dialog-scrollable">
         <div class="modal-content">
-          <div class="modal-header fh-fexedHeader">
+          <div class="modal-header fh-fixedHeader">
             <h1 class="modal-title fs-5">Saved Contexts List</h1>
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
@@ -474,6 +478,33 @@
         </div>
       </div>
     </div>
+
+    <div id="FileUploadListModal" tabindex="-1" class="modal fade">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h1 class="modal-title fs-5">Upload Files</h1>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="FileUploadForm">
+              <div class="mb-3">
+                <label for="dirpathInput" class="form-label">Directory Path</label>
+                <input type="text" class="form-control" id="dirpathInput">
+                <div class="form-text">Destination Path of the uploaded file</div>
+              </div>
+
+              <div class="mb-3">
+                <label for="uploadFilesInput" class="form-label">Upload Multiple Files</label>
+                <input id="uploadFilesInput" class="form-control" type="file" name="files" multiple>
+              </div>
+              <button type="submit" class="btn btn-primary">Upload</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 

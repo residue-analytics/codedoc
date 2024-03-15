@@ -4,11 +4,13 @@ __version__ = "0.1"
 __author__  = "Shalin Garg"
 
 import os
+import shutil
 from typing              import Annotated
 from pathlib             import Path
 from natsort             import os_sorted
 from fastapi             import Depends, APIRouter, Request, HTTPException
 from fastapi.responses   import FileResponse
+from fastapi             import UploadFile
 
 from libs.data           import File
 from libs.auth           import get_current_active_user, User
@@ -270,7 +272,36 @@ def save_file(dir_path: str, fileData: File, request: Request,
     fileData.version = newVer
     fileData.content = None
     return fileData
-    
+
+@router.post("/uploadfiles/{dir_path:path}")
+async def create_upload_files(dir_path:str, files: list[UploadFile]):
+    if dir_path.find("..") != -1:
+        raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
+
+    resp_obj = {"dirpath": dir_path, "filenames": []}
+
+    for file in files:
+        curfilepath = Path(INPUT_CODE_DIR) / dir_path / file.filename
+        if curfilepath.exists():
+            raise HTTPException(status_code=409, detail={'msg': f"File [{file.filename}] already exists at [{dir_path}]."})
+
+        # Create the directory structure, don't raise exceptions if paths exist
+        curfilepath.parent.mkdir(mode=0o744, parents=True, exist_ok=True)
+
+        try:
+            curfilepath.touch(mode=0o644, exist_ok=False)  # Raises FileExistsError if file already exists (expecting this to take care of any race conditions too)
+        except FileExistsError:
+            raise HTTPException(status_code=409, detail={'msg': f"File [{file.filename}] already exists at [{dir_path}]."})
+
+        try:
+            with curfilepath.open("wb") as buffer:
+                shutil.copyfileobj(file.file, buffer)
+                resp_obj["filenames"].append(file.filename)
+        finally:
+            file.file.close()
+
+    return resp_obj
+
 def string_diff(s1: str, s2: str) -> str:
     d1, d2 = [], []
     i1 = i2 = 0

@@ -1560,6 +1560,29 @@ async function setLayout() {
       });
     });
 
+    document.getElementById('UploadFile').addEventListener('click', function(e) {
+      e.preventDefault();
+      const fileModal = new bootstrap.Modal("#FileUploadListModal");
+      fileModal.show();
+    });    
+
+    document.getElementById('FileUploadForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      // Associate the FormData object with the form element
+      const formData = new FormData(e.target);
+      const dirpath = document.getElementById('dirpathInput').value;
+
+      try {
+        const response = await new FilesService().uploadFile(formData, dirpath);
+        console.log(response);
+      } catch(err) {
+        UIUtils.showAlert("erroralert", err);
+      }
+
+      const uploadModal = bootstrap.Modal.getInstance("#FileUploadListModal");
+      uploadModal && uploadModal.hide();
+    });
+
     // Add event listener for the "esc" key to exit full-screen mode
     //document.addEventListener('keydown', event => {
     //  if (event.key === 'Escape') {

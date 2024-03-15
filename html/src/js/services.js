@@ -210,6 +210,16 @@ class FilesService {
 
     return response;
   }
+
+  async uploadFile(formData, dirpath) {
+    const response = await fetch("/uploadfiles/"+dirpath.trim().replace(/^\//, ""), {
+      method: "POST",
+      // Set the FormData instance as the request body
+      body: formData,
+    });
+    await new FetchAPI().handleResponse(response);
+    return await response.json();
+  }
 }
 
 class LLMParamsService {
