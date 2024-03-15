@@ -101,6 +101,7 @@ class LLMParams {
     this.context = context;
     this.code_snippet = code_snippet;
     this.user_prompt = user_prompt;
+    this.snapID = null;   // When this param originates from a history record/snap, hash code
   }
 
   static fromModel(model, sys_prompt = null, context = null, code_snippet = null, user_prompt = '') {
@@ -117,16 +118,19 @@ class LLMParams {
       ...this.model_kwargs.toJSON(),
       context: this.context,
       code_snippet: this.code_snippet,
-      user_prompt: this.user_prompt
+      user_prompt: this.user_prompt,
+      snapID: this.snapID,
     };
   }
 
   // Method to create class from JSON
   static fromJSON(json) {
     const { llmID, temperature, max_new_tokens, topp_nucleus_sampling, repetition_penalty,
-      presence_penalty, system_prompt, topk, context, code_snippet, user_prompt } = json;
-    return new LLMParams(llmID, temperature, max_new_tokens, topp_nucleus_sampling, topk,
+      presence_penalty, system_prompt, topk, context, code_snippet, user_prompt, snapID } = json;
+    const param = new LLMParams(llmID, temperature, max_new_tokens, topp_nucleus_sampling, topk,
       repetition_penalty, presence_penalty, system_prompt, context, code_snippet, user_prompt);
+    param.snapID = snapID;
+    return param;
   }
 }
 
@@ -183,12 +187,21 @@ class ChatMessage {
 }
 
 class LLMParamsSnap {
-  constructor(tm=null, user="", purpose="", hash="", params=None) {
+  constructor(tm=null, user="", purpose="", hash="", params=null) {
     this.tm = tm;
     this.user = user;
     this.purpose = purpose;
-    this.hash = hash;
     this.params = params;
+
+    if (hash && hash.length) {
+      this.hash = hash;
+    } else if (params && params.snapID) {
+      this.hash = params.snapID;
+    }
+
+    if (params && (!params.snapID || !params.snapID.length)) {
+      params.snapID = this.hash;
+    }
   }
 
   toJSON() {
@@ -207,17 +220,26 @@ class LLMParamsSnap {
       json.user, 
       json.purpose,
       json.hash, 
-      LLMParams.fromJSON(json.params)
+      LLMParams.fromJSON(json.params)    // Constructor takes care of hash population
     );
   }
 }
 
 class LLMContextSnap {
-  constructor(tm=null, user="", hash="", context=None) {
+  constructor(tm=null, user="", hash="", context=null) {
     this.tm = tm;
     this.user = user;
-    this.hash = hash;
     this.context = context;
+
+    if (hash && hash.length) {
+      this.hash = hash;
+    } else if (context && context.snapID) {
+      this.hash = context.snapID;
+    }
+
+    if (context && (!context.snapID || !context.snapID.length)) {
+      context.snapID = this.hash;
+    }
   }
 
   toJSON() {
@@ -242,14 +264,25 @@ class LLMContextSnap {
 class LLMParamsHistory {
   constructor(paramsSnaps={records:[]}) {
     this.records = paramsSnaps.records;
+
     this.user_tm_tree = new Map();
     if (this.records && this.records.length > 0) {
       this.updateTree(this.records);
     }
+
+    this.activeSnap = null;
   }
 
   count() {
     return this.records.length;
+  }
+
+  selected(snap) {
+    this.activeSnap = snap;
+  }
+  
+  getActiveSnap() {
+    return this.activeSnap;
   }
 
   updateTree(paramsSnaps) {

@@ -1,5 +1,5 @@
 import { FilesService } from "./services.js";
-import { UIUtils } from "./utils.js";
+import { UIUtils, AppGlobals } from "./utils.js";
 import { CodeFile, CodeFileCache, FileTree } from "./models.js";
 import esprima from "https://unpkg.com/esprima-next@6.0.2/dist/esprima.js";
 import  "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/ace.min.js";
@@ -170,7 +170,7 @@ class AceEditor {
     ace.config.set("basePath", "https://cdn.jsdelivr.net/npm/ace-builds@1.32.2/src-min-noconflict/");
     this.editor.setTheme("ace/theme/monokai");
     this.curFile = null;
-    this.fileCache = new CodeFileCache();
+    //this.fileCache = new CodeFileCache();
     this.makeAceEditorResizable(this.editor);
     this.beautifier = ace.require("ace/ext/beautify");
 
@@ -283,7 +283,6 @@ class AceEditor {
         } else {
           file = await new FilesService().getFileContent(filepath, editable);
         }
-        
       } catch (err) {
         if (err.code == 404 && editable) {  // Git does not care about editable or not, so file not found is an error no fallback
           file = await new FilesService().getFileContent(filepath, false);  // Get the original file
@@ -301,7 +300,8 @@ class AceEditor {
       this.setEditMode(file.name);
       this.curFile = file;
       this.codeFolding = false;
-      this.fileCache.put(this.curFile);
+      //this.fileCache.put(this.curFile);
+      //AppGlobals.instance.history.addFile(this.editorID, this.curFile);
       this.editor.session.selection.on('changeSelection', function (e) { });
     } else {
       // save session and then create new session for new file?
@@ -311,7 +311,8 @@ class AceEditor {
         UIUtils.showAlert("erroralert", "File in editor has been modified, please save or discard the contents first");
         return;
       } else {
-        this.fileCache.put(this.curFile);
+        //this.fileCache.put(this.curFile);
+        //AppGlobals.instance.history.addFile(this.editorID, this.curFile);
         this.curFile = null;
         this.codeFolding = false;
       }
@@ -345,7 +346,8 @@ class AceEditor {
 
   curFileSavedSuccessfully(file) {
     this.curFile = file;
-    this.fileCache.put(file);
+    //this.fileCache.put(file);
+    //AppGlobals.instance.history.addFile(this.editorID, file);
   }
 
   setReadOnly(flag=true) {  // false to edit code
@@ -430,10 +432,11 @@ class AceEditor {
       throw new Error("Invalid Filename, null or has spaces");
     }
 
-    this.curFile = new CodeFile(codeFile.name, codeFile.version, codeFile.content);
+    this.curFile = CodeFile.fromJSON(codeFile.toJSON());  // Shallow copy, as most of the attributes are strings
     this.editor.session.setValue(this.curFile.content);
     this.setEditMode(this.curFile.name);    
-    this.fileCache.put(this.curFile);
+    //this.fileCache.put(this.curFile);
+    //AppGlobals.instance.history.addFile(this.editorID, this.curFile);
     this.codeFolding = false;
     this.hiddenContent = "";  // hidden content cleared, comments toggling starts picking up old comments
   }
@@ -691,6 +694,14 @@ class AceEditor {
 
   toggleFileLocked() {
     this.fileLocked = !this.fileLocked;
+  }
+
+  loadPreviousFile() {
+    
+  }
+
+  loadNextFile() {
+
   }
 }
 

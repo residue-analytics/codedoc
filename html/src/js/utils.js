@@ -161,6 +161,7 @@ class SessionHistory {
     this.history = {
       chatHistory: [],          // {timestamp, ChatMessage} object as sent to server
       paramsHistory: [],        // {timestamp, LLMParams} objects as sent (incl code_snippet)
+      codeFileHistory: {},      // { editorID: [{timestamp, CodeFile}] }
       readOnlyHistory: [],      // {timestamp, CodeFile} objects from the Read Only Editor
       outputEditorHistory: [],  // {timestamp, CodeFile} objects from the Output  Editor
       gitEditorHistory: [],     // {timestamp, CodeFile} objects from the Git  Editor
@@ -191,15 +192,12 @@ class SessionHistory {
     return this.history.paramsHistory.length;
   }
 
-  static RO = "RO";
-  static OP = "OP";
-  static GIT = "GIT";
-  addFile(from, codeFile) {  // "RO", "OP", "GIT"
-    switch (from) {
-      case RO:  this._append(this.history.readOnlyHistory, codeFile.toJSON());
-      case OP:  this._append(this.history.outputEditorHistory, codeFile.toJSON());
-      case GIT: this._append(this.history.gitEditorHistory, codeFile.toJSON());
+  addFile(from, codeFile) {   // from == Editor ID
+    if (!this.history.codeFileHistory[from]) {
+      this.history.codeFileHistory[from] = [];
     }
+
+    this._append(this.history.codeFileHistory[from], codeFile.toJSON());
   }
 
   add(obj) {
@@ -232,12 +230,11 @@ class SessionHistory {
     return { timestamp: obj.timestamp, payload: obj.payload };
   }
 
-  getFileAtIdx(from, idx) {
+  getFileAtIdx(from, idx) {  // from == Editor ID
     let target = null;
-    switch (from) {
-      case RO:  target = this.history.readOnlyHistory;
-      case OP:  target = this.history.outputEditorHistory;
-      case GIT: target = this.history.gitEditorHistory;
+    target = this.history.codeFileHistory[from];
+    if (!target) {
+      return null;
     }
 
     let obj = this._getIdx(target, idx);

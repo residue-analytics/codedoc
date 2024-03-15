@@ -155,7 +155,7 @@ class LLMParamsUI {
       return null;
     }
 
-    return new LLMParams(
+    const params = new LLMParams(
       model.id, 
       this.tempLLMParam.enabled()   ? parseFloat(this.tempLLMParam.getValue()) : null, 
       this.maxTokenParam.enabled()  ? parseInt(this.maxTokenParam.getValue()) : null, 
@@ -168,6 +168,8 @@ class LLMParamsUI {
       null, // Code Snippet
       this.usrPromParam.enabled()   ? this.usrPromParam.getValue() : null
     );
+
+    return params;
   }
 
   updateLLMParams(params) {
@@ -176,7 +178,8 @@ class LLMParamsUI {
     }
 
     let modelCode = this.modelLLMParam.getValue();
-    console.log("From params [" + params.llmID + "] From selctor [" + modelCode + "]");
+
+    //console.log("From params [" + params.llmID + "] From selctor [" + modelCode + "]");
     //if (modelCode == "" || modelCode == "None" || modelCode == null) {
     //  const model = globals.models.findByID(params.llmID);
     //  this.modelLLMParam.setValue(model.code);
@@ -276,6 +279,7 @@ class PageGlobals {
     this.llmSelector = null;
     this.models = null;
     this.llmParamsUI = new LLMParamsUI();
+    this.paramsHistory = null;
     this.chatMode = false;
     this.chatHistory = null;
     this.lastSentParams = null;
@@ -419,19 +423,30 @@ class PageGlobals {
     let oldParams = sessionStorage.getItem(params.llmID);
     let newParams = JSON.stringify(params.toJSON());
     if (oldParams != newParams) {
-      let purpose=$("#ParamsPurposeModalText").val();  // Get purpose from the modal textarea
-      new LLMParamsService().saveParams(
-        new LLMParamsSnap(Date.now(), (await UsersManager.getLoggedInUser()).fullname, purpose, "", params)
-      )
-      .then(resp => {
+      let purpose = $("#ParamsPurposeModalText").val();  // Get purpose from the modal textarea
+      if (!purpose || purpose.length == 0) {
+        UIUtils.showAlert("erroralert", `Purpose cannot be empty`);
+        return;
+      }
+
+      let snap = new LLMParamsSnap(Date.now(), (await UsersManager.getLoggedInUser()).fullname, purpose, "", params);
+      if (document.getElementById("ParamsPurposeUpdate").checked) {
+        const activeSnap = globals.getActiveHistorySnap();
+        snap.hash = activeSnap ? activeSnap.hash : null;
+      } else {
+        snap.hash = null;  // Makes a new Snap to get saved
+      }
+
+      new LLMParamsService().saveParams(snap)
+        .then(resp => {
           UIUtils.showAlert("erroralert", `Saved [${resp.llmID}] with count [${resp.count}] on server`);
           sessionStorage.setItem(params.llmID, newParams);
           $("#ParamsPurposeModalText").val("");
           console.log(`Params for [${params.llmID}] saved locally`);
-      })
-      .catch(
-        err => UIUtils.showAlert("erroralert", `Unable to save [${params.llmID}], err [${err}]`)
-      );
+        })
+        .catch(
+          err => UIUtils.showAlert("erroralert", `Unable to save [${params.llmID}], err [${err}]`)
+        );
     } else {
       UIUtils.showAlert("erroralert", `Nothing new to save for [${params.llmID}]`);
     }
@@ -461,6 +476,7 @@ class PageGlobals {
     .then(history => {
       //console.log(history);
       UIUtils.showAlert("erroralert", `Received [${history.records.length}] reocrds from server`);
+      globals.paramsHistory = history;
 
       $("#ParamsHistoryModal .modal-body").append('<table id="ParamsHistoryTable" class="table table-sm table-bordered table-hover" style="width:100%"></table>');
       
@@ -558,9 +574,9 @@ class PageGlobals {
                   console.log(`Deleting Record [${data.hash}]!!`);
                   let resp = await new LLMParamsService().deleteParam(data);
                   UIUtils.showAlert('erroralert', `Deleted [${resp.deleted}] records from the DB`);
-                  let updatedHist = await new LLMParamsService().getAllParamsHistory();
+                  globals.paramsHistory = await new LLMParamsService().getAllParamsHistory();
                   dt.clear();
-                  dt.rows.add(updatedHist.records); // Add new data
+                  dt.rows.add(globals.paramsHistory.records); // Add new data
                   dt.columns.adjust().draw(); // Redraw the DataTable
                 }
               } catch (err) {
@@ -580,6 +596,8 @@ class PageGlobals {
                 //if (confirm('Applying ' + data.user + "'s params for [" + data.params.llmID +
                 //  "] on workspace LLM [" + globals.llmParamsUI.modelLLMParam.getValue() + "]") == true) {
                     //console.log("Approved application!!");
+                    globals.paramsHistory.selected(data);
+                    document.getElementById("CurrentActiveSnap").setAttribute('title', "Last Selected User Prompt:\n" + data.params.user_prompt);
                     globals.llmParamsUI.updateLLMParams(LLMParams.fromJSON(data.params));
                     UIUtils.showAlert('erroralert', "Loaded " + data.user + "'s Params");
                     const purpModal = bootstrap.Modal.getInstance("#ParamsHistoryModal");
@@ -651,6 +669,13 @@ class PageGlobals {
     document.getElementById('ResetChat').textContent = this.chatHistory.chatMsg.count();
   }
 
+  getActiveHistorySnap() {
+    if (this.paramsHistory) {
+      return this.paramsHistory.getActiveSnap();
+    }
+
+    return null;
+  }
   saveLastSentParams(params) {
     this.lastSentParams = LLMParams.fromJSON(params.toJSON());
     AppGlobals.instance.history.add(params);
@@ -796,10 +821,26 @@ async function setLayout() {
       document.getElementById('UsrPromptInput').value = '';
     });
 
+    document.getElementById('ParamsPurposeUpdate').addEventListener('click', function (e) {
+      if (this.checked) {
+        const snap = globals.getActiveHistorySnap();
+        $("#ParamsPurposeModalText").val(snap ? snap.purpose : "");
+      } else {
+        $("#ParamsPurposeModalText").val("");
+      }
+    });
+
     document.getElementById('SaveParams').addEventListener('click', function (e) {
       e.preventDefault();
       const purpModal = new bootstrap.Modal("#ParamsPurposeModal");
       purpModal.show();
+      
+      if (document.getElementById("ParamsPurposeUpdate").checked) {
+        const snap = globals.getActiveHistorySnap();
+        $("#ParamsPurposeModalText").val(snap ? snap.purpose : "");
+      } else {
+        $("#ParamsPurposeModalText").val("");
+      }
     });
 
     document.getElementById('LockParams').addEventListener('click', function(e) {

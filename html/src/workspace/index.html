@@ -400,8 +400,17 @@
           <div class="modal-body">
             <textarea class="form-control" id="ParamsPurposeModalText" rows="3"></textarea>
           </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save</button>
+          <div class="modal-footer justify-content-between">
+            <div class="me-auto">
+              <button id="CurrentActiveSnap" type="button" class="btn btn-sm" title="No History Params Loaded">
+                <span class="bi bi-info"></span>
+              </button>
+            </div>
+              <div class="form-check form-switch" title="Turn On to Update the last selected Prompt+Params from history, else save as New entry.">
+                <input class="form-check-input" type="checkbox" role="switch" id="ParamsPurposeUpdate" autocomplete="off">
+                <label class="form-check-label" for="ParamsPurposeUpdate">Update</label>
+              </div>
+              <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Save</button>
           </div>
         </div>
       </div>
