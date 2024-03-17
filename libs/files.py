@@ -3,14 +3,18 @@
 __version__ = "0.1"
 __author__  = "Shalin Garg"
 
+import re
 import os
 import shutil
+import magic
 from typing              import Annotated
 from pathlib             import Path
 from natsort             import os_sorted
 from fastapi             import Depends, APIRouter, Request, HTTPException
 from fastapi.responses   import FileResponse
 from fastapi             import UploadFile
+
+from PyPDF2              import PdfReader
 
 from libs.data           import File
 from libs.auth           import get_current_active_user, User
@@ -20,6 +24,7 @@ __all__ = ["router", "INPUT_CODE_DIR", "OUTPUT_CODE_DIR"]
 
 INPUT_CODE_DIR = "./oldcode"
 OUTPUT_CODE_DIR = "./newcode"
+SUPP_MIME_TYPES = [ re.compile("^application/pdf$"), re.compile("^text/.*") ]
 
 githubAPI = None
 router = APIRouter()
@@ -274,13 +279,20 @@ def save_file(dir_path: str, fileData: File, request: Request,
     return fileData
 
 @router.post("/uploadfiles/{dir_path:path}")
-async def create_upload_files(dir_path:str, files: list[UploadFile]):
+async def create_upload_files(dir_path:str, files: list[UploadFile],
+                              current_user: Annotated[User, Depends(get_current_active_user)]):
     if dir_path.find("..") != -1:
         raise HTTPException(status_code=403, detail={'msg': "Forbidden access"})
 
     resp_obj = {"dirpath": dir_path, "filenames": []}
 
     for file in files:
+        file_mime = magic.from_buffer(file.file.read(2048), mime=True)
+        if not any(mime.match(file_mime) for mime in SUPP_MIME_TYPES):
+            print(f"Forbidden File Type [{file.filename}:{file_mime}] upload by [{current_user.fullname}]")
+            raise HTTPException(status_code=403, detail={'msg': "Forbidden File Type"})
+
+        file.file.seek(0)    # Return to the starting of the file
         curfilepath = Path(INPUT_CODE_DIR) / dir_path / file.filename
         if curfilepath.exists():
             raise HTTPException(status_code=409, detail={'msg': f"File [{file.filename}] already exists at [{dir_path}]."})
@@ -294,9 +306,20 @@ async def create_upload_files(dir_path:str, files: list[UploadFile]):
             raise HTTPException(status_code=409, detail={'msg': f"File [{file.filename}] already exists at [{dir_path}]."})
 
         try:
-            with curfilepath.open("wb") as buffer:
-                shutil.copyfileobj(file.file, buffer)
-                resp_obj["filenames"].append(file.filename)
+            if file_mime == "application/pdf":
+                reader = PdfReader(file.file)
+                text = ""
+                for page in reader.pages:
+                    text+=page.extract_text()
+                new_text = text.replace('\u25AA',"").replace("z\n","")
+
+                with curfilepath.open("w") as buffer:
+                    buffer.write(new_text)
+            else:        
+                with curfilepath.open("wb") as buffer:
+                    shutil.copyfileobj(file.file, buffer)
+            
+            resp_obj["filenames"].append(file.filename)
         finally:
             file.file.close()
 

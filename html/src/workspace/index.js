@@ -388,6 +388,19 @@ class PageGlobals {
       }
   }
 
+  async reloadReadOnlyTree() {
+    await new FilesService().getFiles(null, this.showingEditableTree).then(
+      fileList => {
+            this.readOnlyEditor.reloadTree(fileList, this.showingEditableTree);
+
+            // Reinitialize typeahead, File Search
+            $('#scrollable-dropdown-menu .typeahead').typeahead('destroy');
+
+            this.setupFileSearch();
+      }
+    );
+  }
+
   async toggleReadOnlyEditorTree() {
     try {
       await new FilesService().getFiles(null, !this.showingEditableTree).then(
@@ -676,6 +689,7 @@ class PageGlobals {
 
     return null;
   }
+  
   saveLastSentParams(params) {
     this.lastSentParams = LLMParams.fromJSON(params.toJSON());
     AppGlobals.instance.history.add(params);
@@ -1564,7 +1578,7 @@ async function setLayout() {
       e.preventDefault();
       const fileModal = new bootstrap.Modal("#FileUploadListModal");
       fileModal.show();
-    });    
+    });
 
     document.getElementById('FileUploadForm').addEventListener('submit', async function(e) {
       e.preventDefault();
@@ -1574,6 +1588,8 @@ async function setLayout() {
 
       try {
         const response = await new FilesService().uploadFile(formData, dirpath);
+        // Reload directory tree
+        globals.reloadReadOnlyTree();
         console.log(response);
       } catch(err) {
         UIUtils.showAlert("erroralert", err);

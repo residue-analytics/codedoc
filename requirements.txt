@@ -24,3 +24,6 @@ tiktoken
 esprima
 natsort
 PyGithub
+python-magic-bin
+python-magic
+PyPDF2
