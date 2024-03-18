@@ -52,10 +52,10 @@ var routes = [
     renderURL("diagrams/sequence");
     activateNavLink(match.url);
   }, authBeforeHook],
-  ["diagrams/dataflow", async (match) => {
-    renderURL("diagrams/dataflow");
-    activateNavLink(match.url);
-  }, authBeforeHook],
+  //["diagrams/dataflow", async (match) => {
+  //  renderURL("diagrams/dataflow");
+  //  activateNavLink(match.url);
+  //}, authBeforeHook],
   ["agent/config", async (match) => {
     renderURL("agent/config");
     activateNavLink(match.url);
