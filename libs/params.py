@@ -145,7 +145,7 @@ MODELS = {
         'id_for_prvdr': 'gemini-pro',
         'name': 'Google Gemini Pro Chat',
         'code': 'GGPC',
-        'api-key': "AIzaSyAyd1PpWxnQ24dM51-onvVIlrkDtyUIKWM",
+        'api-key': os.getenv("GOOGLE_API_KEY"),
         'provider': 'ChatGeminiPro',
         'model_kwargs': {
             'system_prompt': 'You are a helpful agent',
