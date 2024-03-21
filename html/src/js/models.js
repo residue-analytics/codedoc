@@ -237,9 +237,9 @@ class LLMContextSnap {
       this.hash = context.snapID;
     }
 
-    if (context && (!context.snapID || !context.snapID.length)) {
-      context.snapID = this.hash;
-    }
+    //if (context && (!context.snapID || !context.snapID.length)) {
+    //  context.snapID = this.hash;
+    //}
   }
 
   toJSON() {
