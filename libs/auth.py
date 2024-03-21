@@ -42,7 +42,8 @@ from typing import Dict
 
 # to get a string like this run:
 # openssl rand -hex 32
-SECRET_KEY = "03ce19ebe700afcd4567b4665569f3685339508bfeacd978ae28caa5eba0b787"
+# SECRET_KEY = "03ce19ebe700afcd4567b4665569f3685339508bfeacd978ae28caa5eba0b787"
+SECRET_KEY = os.getenv("TOKEN_ENC_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 120
 
