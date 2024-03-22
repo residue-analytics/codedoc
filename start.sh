@@ -2,15 +2,21 @@
 
 # Function to start servers based on environment (dev or prod)
 start_servers() {
+  PREFIX="winpty"
+  winpty --help &> /dev/null
+  if [[ $? -ne 0 ]]; then
+    PREFIX=""
+  fi
+
   if [[ "${1}" == "dev" ]]; then
     echo "Starting FastAPI webserver in development mode..."
-    python ./serve.py --port 8000 --html ./html/src --useHTTPS --workers 2
+    ${PREFIX} python ./serve.py --port 8000 --html ./html/src
   else
     echo "Starting PlantUML server..."
     nohup java -jar plantuml-lgpl-1.2024.0.jar -picoweb:8888:127.0.0.1 &
     
     echo "Starting FastAPI webserver in production mode..."
-    python ./serve.py --port 9999 --html ./html --workers 4
+    ${PREFIX} python ./serve.py --port 9999 --html ./html --useHTTPS --workers 4
   fi
 }
 
@@ -87,7 +93,7 @@ stop)
    stop_server 'plantuml'
    ;;
 start)
-   if [ $# !=2 ] || { [ "${2}" != "dev" ] && [ "${2}" != "" ]; }; then
+   if [[ $# != 2 ]] || { [[ "${2}" != "dev" ]] && [[ "${2}" != "" ]]; }; then
      echo >&2 "Usage when starting: nohup ${0} start [dev] &"
      exit
    fi
