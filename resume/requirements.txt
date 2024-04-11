@@ -1,0 +1,5 @@
+llama-index
+llama-hub
+llama-index-embeddings-azure-openai
+llama-index-llms-azure-openai
+pypdf
