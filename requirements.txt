@@ -4,6 +4,7 @@ gunicorn
 sse_starlette
 fastapi
 langchain
+langchain-community
 langserve
 gradio_client
 pydantic

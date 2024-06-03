@@ -40,15 +40,15 @@ import openai
 from langchain.globals   import set_verbose
 from langchain.globals   import set_debug
 from langchain.globals   import set_llm_cache
-from langchain.cache     import InMemoryCache
+from langchain_community.cache     import InMemoryCache
 from langchain.prompts   import PromptTemplate
 from langchain.schema    import BaseOutputParser
 from langchain.schema    import HumanMessage, SystemMessage, AIMessage
-from langchain.chat_models import AzureChatOpenAI
-from langchain.chat_models import ChatOpenAI
-from langchain.llms      import OpenAI
+from langchain_community.chat_models import AzureChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
+from langchain_community.llms      import OpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAI
-from langchain.llms      import AzureOpenAI
+from langchain_community.llms      import AzureOpenAI
 from langchain.chains    import LLMChain
 from langserve           import add_routes
 
